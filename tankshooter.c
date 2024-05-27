@@ -91,46 +91,6 @@ static SDL_GLContext gGlContext;
 
 GLuint createShaderProgram(const char* vertexSource, const char* fragmentSource);
 
-GLuint gFbo;
-GLuint gTextureColorBuffer;
-
-float gQuadVertices [] = {
-    -1.0f, 1.0f, 0.0f, 1.0f,
-    -1.0f, -1.0f, 0.0f, 0.0f,
-    1.0f, -1.0f, 1.0f, 0.0f,
-    1.0f, 1.0f, 1.0f, 1.0f
-};
-
-unsigned int gQuadIndices[] = {
-  0,1,2,
-  0,2,3
-};
-
- float correction = 1.0F;
-
-GLuint gQuadVAO, gQuadVBO, gQuadEBO;
-GLuint gScreenShaderProgram;
-
-// Shader sources for screen quad
-const char* gScreenVertexShaderSource = "#version 330 core\n"
-    "layout (location = 0) in vec2 aPos;\n"
-    "layout (location = 1) in vec2 aTexCoord;\n"
-    "out vec2 TexCoord;\n"
-    "void main()\n"
-    "{\n"
-    "    TexCoord = aTexCoord;\n"
-    "    gl_Position = vec4(aPos, 0.0, 1.0);\n"
-    "}\0";
-
-const char* gScreenFragmentShaderSource = "#version 330 core\n"
-    "out vec4 FragColor;\n"
-    "in vec2 TexCoord;\n"
-    "uniform sampler2D screenTexture;\n"
-    "void main()\n"
-    "{\n"
-    "    FragColor = texture(screenTexture, TexCoord );\n"
-    "}\n\0";
-
 
 // Quad Draw Test
 GLuint gSpriteQuadVBO, gSpriteQuadVAO, gSpriteQuadEBO;
@@ -287,25 +247,6 @@ Mat4 multiplyMatrices(Mat4 a, Mat4 b) {
 }
 
 
-// Mat4 createOrthographicMatrix(float left, float right, float bottom, float top, float nearPlane, float farPlane) {
-//     Mat4 orthoMatrix = {{
-//         {2.0f / (right - left), 0.0f, 0.0f, 0.0f},
-//         {0.0f, 2.0f / (top - bottom), 0.0f, 0.0f},
-//         {0.0f, 0.0f, -2.0f / (farPlane - nearPlane), 0.0f},
-//         {-(right + left) / (right - left), -(top + bottom) / (top - bottom), -(farPlane + nearPlane) / (farPlane - nearPlane), 1.0f}
-//     }};
-//     return orthoMatrix;
-// }
-
-// Mat4 createOrthographicMatrix(float left, float right, float bottom, float top, float nearPlane, float farPlane) {
-//     Mat4 orthoMatrix = {{
-//         {2.0f / (right - left), 0.0f, 0.0f, -(right + left) / (right - left)},
-//         {0.0f, 2.0f / (top - bottom), 0.0f, -(top + bottom) / (top - bottom)},
-//         {0.0f, 0.0f, -2.0f / (farPlane - nearPlane), -(farPlane + nearPlane) / (farPlane - nearPlane)},
-//         {0.0f, 0.0f, 0.0f, 1.0f}
-//     }};
-//     return orthoMatrix;
-// }
 
 
 Mat4 createOrthographicMatrix(float left, float right, float bottom, float top, float nearPlane, float farPlane) {
@@ -318,26 +259,10 @@ Mat4 createOrthographicMatrix(float left, float right, float bottom, float top, 
     return orthoMatrix;
 }
 
-Mat4 createOrthographicMatrix2(float left, float right, float bottom, float top, float nearPlane, float farPlane, float tx, float ty, float sx, float sy) {
-    Mat4 orthoMatrix = {{
-        {2.0f / sx, 0.0f, 0.0f, 0.0f},
-        {0.0f, 2.0f / sy, 0.0f, 0.0f},
-        {0.0f, 0.0f, -2.0f / (farPlane - nearPlane), 0.0f},
-        {-(right + left) / (right - left) + tx, -(top + bottom) / (top - bottom) + ty, -(farPlane + nearPlane) / (farPlane - nearPlane), 1.0f}
-    }};
-    return orthoMatrix;
-}
 
 
-// Mat4 createOrthographicMatrix(float left, float right, float bottom, float top) {
-//     Mat4 orthoMatrix = {{
-//         {2.0f / (right - left), 0.0f, 0.0f, 0.0f},
-//         {0.0f, 2.0f / (top - bottom), 0.0f, 0.0f},
-//         {0.0f, 0.0f, -1.0f, 0.0f},
-//         {-(right + left) / (right - left), -(top + bottom) / (top - bottom), 0.0f, 1.0f}
-//     }};
-//     return orthoMatrix;
-// }
+
+
 
 Mat4 createIdentityMatrix() {
     Mat4 result = {{
@@ -358,16 +283,16 @@ void init_sprite_quad() {
     // Define vertices for a simple quad
  
 
-float vertices[] = {
-     0.5f,  0.5f, 0.0f,  // top right
-     0.5f, 0.5f, 0.0f,  // bottom right
-    0.5f, 0.5f, 0.0f,  // bottom left
-    0.5f,  0.5f, 0.0f   // top left 
-};
-unsigned int indices[] = {  // note that we start from 0!
-    2, 1, 0,   // first triangle
-    0, 1, 3    // second triangle
-};  
+    float vertices[] = {
+        -0.5f, 0.5f, 0.0f,  // top right
+        0.5f, 0.5f, 0.0f,  // bottom right
+        0.5f, -0.5f, 0.0f,  // bottom left
+        -0.5f,  -0.5f, 0.0f   // top left 
+    };
+    unsigned int indices[] = {  // note that we start from 0!
+        0, 1, 2,   // first triangle
+        3, 0, 2    // second triangle
+    };  
 
 
     // Create Vertex Array Object and Vertex Buffer Object
@@ -398,33 +323,19 @@ void render_sprite_quad(float posX, float posY, float scaleX, float scaleY, floa
     // Bind VAO and draw quad
     glUseProgram(gSpriteShaderProgram);
     glBindVertexArray(gSpriteQuadVAO);
-
-     // Adjust scale based on letterboxing correction factor
-   
     // Set transformation matrices
     Mat4 translationMatrix = createTranslationMatrix((Vec3) {posX, posY, 0.0});
     Mat4 scaleMatrix = createScaleMatrix((Vec3){scaleX, scaleY, 1.0});
-   // Mat4 rotationMatrix = createRotationZMatrix(rotationZ);
+    Mat4 rotationMatrix = createRotationZMatrix(rotationZ);
     // Calculate model matrix by multiplying translation, rotation, and scale matrices
     Mat4 modelMatrix = createIdentityMatrix();
-    
+    modelMatrix = multiplyMatrices(modelMatrix, translationMatrix);
+    modelMatrix = multiplyMatrices(modelMatrix, rotationMatrix);
     modelMatrix = multiplyMatrices(modelMatrix, scaleMatrix);
-    //modelMatrix = multiplyMatrices(rotationMatrix, modelMatrix);
-   modelMatrix = multiplyMatrices(modelMatrix, translationMatrix);
 
-    // T * C
-
-
-
-    //Set uniform matrices
-    //Assuming view and projection matrices are set elsewhere
-   //glUniformMatrix4fv(glGetUniformLocation(gSpriteShaderProgram, "model"), 1, GL_TRUE, (const GLfloat *)modelMatrix.data);
-
-
+    // ((T * R) * S)
     int MatrixID = glGetUniformLocation(gSpriteShaderProgram, "model");
-
     glUniformMatrix4fv(MatrixID, 1, GL_TRUE, &modelMatrix.data[0][0]);
-
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
     glBindVertexArray(0);
 }
@@ -466,280 +377,26 @@ GLuint createShaderProgram(const char* vertexSource, const char* fragmentSource)
     return shaderProgram;
 }
 
-void init_quad()
-{
-  glGenVertexArrays(1, &gQuadVAO);
-  glGenBuffers(1, &gQuadVBO);
-  glGenBuffers(1, &gQuadEBO);
-  glBindVertexArray(gQuadVAO);
-
-  glBindBuffer(GL_ARRAY_BUFFER, gQuadVBO);
-  glBufferData(GL_ARRAY_BUFFER, sizeof(gQuadVertices), gQuadVertices, GL_STATIC_DRAW);
-
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, gQuadEBO);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(gQuadIndices), gQuadIndices, GL_STATIC_DRAW);
-
-  glEnableVertexAttribArray(0);
-  glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
-
-  glEnableVertexAttribArray(1);
-  glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
-
-  glBindVertexArray(0);
-}
-
-
-
-
-
-void render_quad()
-{
-  glDisable(GL_DEPTH_TEST);
-
-  glClear(GL_COLOR_BUFFER_BIT);
-
-  glUseProgram(gScreenShaderProgram);
-  glBindVertexArray(gQuadVAO);
-  glBindTexture(GL_TEXTURE_2D, gTextureColorBuffer);
-
-  glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-
-  glBindVertexArray(0);
-}
-
-
-void init_framebuffer(int width, int height)
-{
-  glGenFramebuffers(1, &gFbo);
-  glBindFramebuffer(GL_FRAMEBUFFER, gFbo);
-
-  glGenTextures(1, &gTextureColorBuffer);
-  glBindTexture(GL_TEXTURE_2D, gTextureColorBuffer);
-
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
-
-  // Filtering
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-  
-  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, gTextureColorBuffer, 0);
-
-
-  GLuint rbo;
-  glGenRenderbuffers(1, &rbo);
-  glBindRenderbuffer(GL_RENDERBUFFER, rbo);
-  glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, width, height);
-  glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo);
-
-  if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-      fprintf(stderr, "Framebuffer is not complete!\n");
-  }
-  glBindFramebuffer(GL_FRAMEBUFFER, 0);
-}
-
 
 void render_scene()
 {
-  glBindFramebuffer(GL_FRAMEBUFFER, gFbo);
+
   glEnable(GL_DEPTH_TEST);
 
   // Clear the screen
   glClearColor(40.0f / 255.0f, 45.0f / 255.0f, 52.0f / 255.0f, 1.0f);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-
- 
-
   // Render your scene here (sprites, objects, etc.)
   render_sprite_quad(gSpritePos.x, gSpritePos.y, 100, 100, 0.0f);
 
-  glBindFramebuffer(GL_FRAMEBUFFER, 0);
-}
-
-float calculateLetterboxingCorrection(int windowWidth, int windowHeight) {
-    // float virtualAspect = (float)VIRTUAL_WIDTH / (float)VIRTUAL_HEIGHT;
-    // float windowAspect = (float)windowWidth / (float)windowHeight;
-    
-    // if (windowAspect > virtualAspect) {
-    //     // Window wider than virtual screen
-    //     return (float)windowHeight / VIRTUAL_HEIGHT;
-    // } else {
-    //     // Window taller than virtual screen
-    //     return (float)windowWidth / VIRTUAL_WIDTH;
-    // }
-
-    float windowAspect = (float)windowWidth / (float)windowHeight;
-    float virtualAspect = (float)VIRTUAL_WIDTH / (float)VIRTUAL_HEIGHT;
-    
-    int viewportWidth, viewportHeight;
-    int viewportX = 0, viewportY = 0;
-
-    float correction = 0.0f;
-
-    if (windowAspect > virtualAspect) {
-        viewportHeight = windowHeight;
-        viewportWidth = (int)(windowHeight * virtualAspect);
-        viewportX = (windowWidth - viewportWidth) / 2;
-
-        correction = (float)windowHeight / VIRTUAL_HEIGHT;
-    } else {
-        viewportWidth = windowWidth;
-        viewportHeight = (int)(windowWidth / virtualAspect);
-        viewportY = (windowHeight - viewportHeight) / 2;
-        correction = (float)windowWidth / VIRTUAL_WIDTH;;
-    }
-
-    glViewport(viewportX, viewportY, viewportWidth, viewportHeight);
-
-    return correction;
-}
 
 
-
-
-
-void applyLetterboxing(int windowWidth, int windowHeight) {
-    printf("Applying Letter boxing\n");
-
-    // Calculate viewport dimensions
-    float windowAspect = (float)windowWidth / (float)windowHeight;
-    float virtualAspect = (float)VIRTUAL_WIDTH / (float)VIRTUAL_HEIGHT;
-    int viewportWidth, viewportHeight;
-    int viewportX = 0, viewportY = 0;
-
-    if (windowAspect > virtualAspect) {
-    // Window is wider than the virtual aspect ratio
-      viewportHeight = windowHeight;
-      viewportWidth = (int)(windowHeight * virtualAspect);
-      viewportX = (windowWidth - viewportWidth) / 2;
-      printf("Viewport X: %d, Viewport Width: %d\n", viewportX, viewportWidth);
-    } else {
-        // Window is taller than the virtual aspect ratio
-        viewportWidth = windowWidth;
-        viewportHeight = (int)(windowWidth / virtualAspect);
-        viewportY = (windowHeight - viewportHeight) / 2;
-        printf("Viewport Y: %d, Viewport Height: %d\n", viewportY, viewportHeight);
-    }
-
-    glViewport(viewportX, viewportY, viewportWidth, viewportHeight);
-
-    // Calculate translation and scaling factors
-    float tx = -2.0f * ((float)viewportX / (float)windowWidth) + 1.0f;
-    float ty = -2.0f * ((float)viewportY / (float)windowHeight) + 1.0f;
-    float sx = 2.0f * (float)viewportWidth / (float)windowWidth;
-    float sy = 2.0f * (float)viewportHeight / (float)windowHeight;
-
-    // Calculate orthographic projection matrix
-    float left, right, bottom, top;
-    float aspectRatio = (float)viewportWidth / (float)viewportHeight;
-    float halfWidth = 0;
-float halfHeight = 0;
-
-    if (aspectRatio > 1.0f) {
-        // If the viewport is wider than it is tall
-         halfWidth = VIRTUAL_WIDTH / 2.0f;
-         halfHeight = halfWidth / aspectRatio;
-        left = -halfWidth;
-        right = halfWidth;
-        bottom = -halfHeight;
-        top = halfHeight;
-    } else {
-        // If the viewport is taller than it is wide
-         halfHeight = VIRTUAL_HEIGHT / 2.0f;
-         halfWidth = halfHeight * aspectRatio;
-        left = -halfWidth;
-        right = halfWidth;
-        bottom = -halfHeight;
-        top = halfHeight;
-    }
-
-    // Adjust the left and right edges based on viewport translation
-    left += tx * (right - left);
-    right += tx * (right - left);
-
-    printf("Left is %f\n", left );
-
-glUseProgram(gSpriteShaderProgram);
-//     glBindVertexArray(gSpriteQuadVAO);
-
-    // Create orthographic projection matrix
-    // Mat4 orthoMatrix = createOrthographicMatrix2(viewportX, viewportX + viewportWidth, viewportHeight, viewportWidth, -1, 1, 0, ty, sx, sy);
-    // gProjectionMatrix = createOrthographicMatrix(-1.0 *aspectRatio, viewportWidth, 1 * aspectRatio, viewportHeight, -1, 1.0f);
-
-    // Apply orthographic projection matrix
-    //glUniformMatrix4fv(glGetUniformLocation(gSpriteShaderProgram, "projection"), 1, GL_TRUE, (const GLfloat *)gProjectionMatrix.data);
-}
-
-
-// void applyLetterboxing(int windowWidth, int windowHeight) {
-//     printf("Applying Letter boxing\n");
-
-//     // Calculate viewport dimensions
-//     float windowAspect = (float)windowWidth / (float)windowHeight;
-//     float virtualAspect = (float)VIRTUAL_WIDTH / (float)VIRTUAL_HEIGHT;
-//     int viewportWidth, viewportHeight;
-//     int viewportX = 0, viewportY = 0;
-
-//     // Calculate the aspect ratio of the virtual content
-//     float contentAspect = virtualAspect;
-
-//     // If the window aspect ratio is wider than the virtual aspect ratio
-//     if (windowAspect > virtualAspect) {
-//         viewportHeight = windowHeight;
-//         viewportWidth = (int)(windowHeight * virtualAspect);
-//         viewportX = (windowWidth - viewportWidth) / 2;
-
-//         printf("Viewport X: %d, Viewport Width: %d\n", viewportX, viewportWidth);
-//     } else { // If the window aspect ratio is taller than the virtual aspect ratio
-//         viewportWidth = windowWidth;
-//         viewportHeight = (int)(windowWidth / virtualAspect);
-//         viewportY = (windowHeight - viewportHeight) / 2;
-
-//         // Adjust the content aspect ratio to match the stretched viewport
-//         contentAspect = windowAspect;
-
-//         printf("Viewport Y: %d, Viewport Height: %d\n", viewportY, viewportHeight);
-//     }
-
-//     glViewport(viewportX, viewportY, viewportWidth, viewportHeight);
-
- 
-
+  printf("spritePos: %d %d\n", (int)gSpritePos.x, (int)gSpritePos.y);
   
-
-   
-
-    
-//     // Calculate the aspect ratio of the scaled viewport
-//     float scaledViewportAspect = (float)viewportWidth / (float)viewportHeight;
-
-//     // Calculate the width and height of the content area
-//     float contentWidth = VIRTUAL_WIDTH;
-//     float contentHeight = VIRTUAL_HEIGHT;
-
-//     if (scaledViewportAspect > virtualAspect) {
-//         // Scale content width
-//         contentWidth = contentHeight * scaledViewportAspect;
-//     } else {
-//         // Scale content height
-//         contentHeight = contentWidth / scaledViewportAspect;
-//     }
-
-//     // Calculate the left edge based on the viewport translation
-//     float left = -contentWidth / 2.0f + ((float)viewportWidth - windowWidth) / 2.0f;
-//     float right = left + contentWidth;
-
-//       printf("Left is %f\n", left );
-
-//        glUseProgram(gSpriteShaderProgram);
-//     glBindVertexArray(gSpriteQuadVAO);
-
-//     // Create orthographic projection matrix
-//     Mat4 orthoMatrix = createOrthographicMatrix(viewportX, right, -contentHeight / 2.0f, contentHeight / 2.0f, -1, 1);
-
-//     // Apply orthographic projection matrix
-//     glUniformMatrix4fv(glGetUniformLocation(gSpriteShaderProgram, "projection"), 1, GL_TRUE, (const GLfloat *)orthoMatrix.data);
-// }
+  render_sprite_quad(WINDOW_WIDTH/2, WINDOW_HEIGHT/2, 50, 50, 0.0f);
+ 
+}
 
 void display_fps(float fps);
 
@@ -873,24 +530,11 @@ void love_load()
 
   sound_music_load(&gMusic, "./data/sounds/music.wav"); 
 
-  // Start Game Music
-  //sound_music_play(&gMusic, true);
 
-  // Init State Manager
-  //gStateManager.currentState = &gStartState;
-  
-  //state_manager_switch(&gStateManager, &gStartState); // starting at start state
 
   // Init Keys
   SDL_memset(keys, 0, SDL_NUM_SCANCODES * sizeof(bool));
   SDL_memset(keysR, 0, SDL_NUM_SCANCODES * sizeof(bool));
-
-  init_framebuffer(VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
-  init_quad();
-
-  gScreenShaderProgram = createShaderProgram(gScreenVertexShaderSource,
-    gScreenFragmentShaderSource);
-
 
   init_sprite_quad();
   gSpriteShaderProgram = createShaderProgram(g_sprite_vertex_shader_source, g_sprite_fragment_shader_source);
@@ -905,8 +549,8 @@ void love_load()
 
   gViewMatrix = getViewMatrix((Vec3){0,0, 0.0});
   
-  gProjectionMatrix = createOrthographicMatrix(0, WINDOW_WIDTH, 0, WINDOW_HEIGHT, -1.0F, 1.0f);
-  glUniformMatrix4fv(glGetUniformLocation(gSpriteShaderProgram, "view"), 1, GL_TRUE, (const GLfloat *)gViewMatrix.data);
+  gProjectionMatrix = createOrthographicMatrix(0, WINDOW_WIDTH,  WINDOW_HEIGHT, 0, -1.0F, 1.0f);
+  glUniformMatrix4fv(glGetUniformLocation(gSpriteShaderProgram, "view"), 1, GL_FALSE, (const GLfloat *)gViewMatrix.data);
   glUniformMatrix4fv(glGetUniformLocation(gSpriteShaderProgram, "projection"), 1, GL_FALSE, (const GLfloat *)gProjectionMatrix.data);
 
   gSpritePos = (Vec3){0,0,0};
@@ -973,34 +617,7 @@ void love_keyreleasedR(int key)
   keysR[key] = false;
 }
 
-void handle_window_resize()
-{
-   /*
-      This Maintain the aspect ratio by letter boxing
-      Always maintains aspect ratio
-    */
-    // Get the window size
-    int windowWidth, windowHeight;
-    SDL_GetWindowSize(gWindow, &windowWidth, &windowHeight);
 
-    // Calculate aspect ratio
-    float windowAspect = (float)windowWidth / (float)windowHeight;
-    float virtualAspect = (float)VIRTUAL_WIDTH / (float)VIRTUAL_HEIGHT;
-
-    if (windowAspect > virtualAspect) {
-        // Window is wider than the virtual aspect ratio
-        dstrect.h = windowHeight;
-        dstrect.w = (int)(windowHeight * virtualAspect);
-        dstrect.x = (windowWidth - dstrect.w) / 2;
-        dstrect.y = 0;
-    } else {
-        // Window is taller than the virtual aspect ratio
-        dstrect.w = windowWidth;
-        dstrect.h = (int)(windowWidth / virtualAspect);
-        dstrect.x = 0;
-        dstrect.y = (windowHeight - dstrect.h) / 2;
-    }
-}
 
 void input_handling()
 {
@@ -1033,28 +650,10 @@ void input_handling()
       { 
         if(gEvent.window.event == SDL_WINDOWEVENT_RESIZED)
         {
-           handle_window_resize();
-
-           // Solved the drawing artifect zig zag
-          applyLetterboxing(gEvent.window.data1, gEvent.window.data2);
-        
-          //  int windowWidth = gEvent.window.data1;
-          // int windowHeight = gEvent.window.data2;
-          // float correction = calculateLetterboxingCorrection(windowWidth, windowHeight);
-          // adjustOrthographicProjection(windowWidth, windowHeight, correction);
-
+          glViewport(0, 0, gEvent.window.data1,  gEvent.window.data2);
         }
-         
-
         if(gEvent.window.event == SDL_WINDOWEVENT_SIZE_CHANGED)
-        {
-          applyLetterboxing(gEvent.window.data1, gEvent.window.data2);
-
-          //   int windowWidth = gEvent.window.data1;
-          // int windowHeight = gEvent.window.data2;
-          // float correction = calculateLetterboxingCorrection(windowWidth, windowHeight);
-          // adjustOrthographicProjection(windowWidth, windowHeight, correction);
-          
+        {    
         }
       } break;
 
@@ -1068,18 +667,11 @@ void input_handling()
 
 void love_update(float dt)
 {
-  // Handle state transitions logic
-  //handle_state_machine_transitions();
 
-  // Update current state
-  //gStateManager.currentState->update(dt);
-
- 
-  //cameraPos.x -= dt *  10.0f;
 
   if(love_wasPressedR(SDL_SCANCODE_UP))
   {
-    gSpritePos.y += 50 * dt;
+    gSpritePos.y -= 50 * dt;
   }
    if(love_wasPressedR(SDL_SCANCODE_RIGHT))
   {
@@ -1091,12 +683,12 @@ void love_update(float dt)
   }
    if(love_wasPressedR(SDL_SCANCODE_DOWN))
   {
-    gSpritePos.y -= 50 * dt;
+    gSpritePos.y += 50 * dt;
   }
 
   if(love_wasPressedR(SDL_SCANCODE_C))
   {
-    gCameraPos.x -= 2 * dt;
+    gCameraPos.x -= 60 * dt;
   }
 
 
@@ -1115,47 +707,12 @@ void love_update(float dt)
 
 void love_draw()
 {
-  // Set the render target to our texture
-  //set_render_target(gRenderer, gRenderTexture);
-
-  // SDL_SetRenderDrawColor(gRenderer, 40, 45, 52, 255);
-  // SDL_RenderClear(gRenderer);
-  //glClearColor(40.0f / 255.0f, 45.0f / 255.0f, 52.0f / 255.0f, 1.0f);
- // glClear(GL_COLOR_BUFFER_BIT);
-
-  // Render Order is important
-
-  // Draw Background regardless of what state we are in.
-  //float xScaleFactor = VIRTUAL_WIDTH / (gBackgroundImg.width - 1) * 2;
- //float yScaleFactor = VIRTUAL_HEIGHT / (gBackgroundImg.height -1) * 2;
-
-  //image_draw(&gBackgroundImg, gRenderer, 0,0, xScaleFactor, yScaleFactor);
-
-  //gStateManager.currentState->render();
-
-  //display_fps(fpsCounter);
- 
-  // Reset the render target to the default render target (the window)
-  //reset_render_target(gRenderer);
-
-  // Clear the window renderer before presenting the new frame
-  // SDL_SetRenderDrawColor(gRenderer, 0, 0, 0, 255);
-  // SDL_RenderClear(gRenderer);
   
-
-  // Copy the texture to the renderer, scaling it to fit the window
-  // SDL_RenderCopy(gRenderer, gRenderTexture, NULL, &dstrect);
-  // SDL_RenderPresent(gRenderer);
-
-  // Render scene to framebuffer
   render_scene();
 
-  glClearColor(0,0,0, 1.0f);
-  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+ 
 
-  // render framebuffer texture to screen
-  render_quad();
-
+  
 
   SDL_GL_SwapWindow(gWindow);
 
@@ -1186,10 +743,7 @@ int main(int argc, char *argv[])
     love_update(dt);
     love_draw();
 
-    // Copy the texture to the renderer, scaling it to fit the window
-    //SDL_RenderCopy(gRenderer, gRenderTexture, NULL, &dstrect);
-    /* Draw to window and loop */
-    //SDL_RenderPresent(gRenderer);
+
 
     // Calculate delta time
     Uint32 currentTime = SDL_GetTicks();

@@ -2,11 +2,11 @@
 
 REM call "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvarsall.bat" x64
 
-SET SDL_PATH=..\thirdparty\SDL2
-SET SDL_TTF_PATH=..\thirdparty\SDL2_ttf
-SET SDL_MIXER_PATH=..\thirdparty\SDL_mixer
-SET SDL_IMAGE_PATH=..\thirdparty\SDL2_image
-SET GLAD_PATH=..\thirdparty\glad
+SET SDL_PATH=..\..\thirdparty\SDL2
+SET SDL_TTF_PATH=..\..\thirdparty\SDL2_ttf
+SET SDL_MIXER_PATH=..\..\thirdparty\SDL_mixer
+SET SDL_IMAGE_PATH=..\..\thirdparty\SDL2_image
+SET GLAD_PATH=..\..\thirdparty\glad
 
 
 IF NOT EXIST ..\build mkdir ..\build
