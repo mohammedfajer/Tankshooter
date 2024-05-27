@@ -148,44 +148,40 @@ void renderFramebufferToScreen(int windowWidth, int windowHeight) {
     glViewport(vp_x, vp_y, width, height);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-   glUseProgram(gScreenShaderProgram);
-  glBindVertexArray(gQuadVAO);
-  glBindTexture(GL_TEXTURE_2D, gTextureColorBuffer);
+   
 
-  glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-    // Set up and draw a quad with the framebuffer texture
-    // Assuming you have a function to draw a quad
+    // render framebuffer texture to screen
+    render_quad();
     
 
-    glBindTexture(GL_TEXTURE_2D, 0);
+    
 }
+
+
 
 
 
 
 void render_scene()
-{
+{ 
+  // Render your scene here (sprites, objects, etc.)
+  render_sprite_quad(gSpritePos.x, gSpritePos.y, 100, 100, 0.0f);
+  printf("spritePos: %d %d\n", (int)gSpritePos.x, (int)gSpritePos.y);
+  render_sprite_quad(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2, 50, 50, 0.0f);
+}
 
-  glBindFramebuffer(GL_FRAMEBUFFER, gFbo);
- glViewport(0, 0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
-  glEnable(GL_DEPTH_TEST);
-
-  
-
-   
-
-    // Clear the viewport area with the desired background color
+void renderToFramebuffer() {
+    glBindFramebuffer(GL_FRAMEBUFFER, gFbo);
+    glViewport(0, 0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
     glClearColor(40.0f / 255.0f, 45.0f / 255.0f, 52.0f / 255.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    // Render your scene here (sprites, objects, etc.)
-    render_sprite_quad(gSpritePos.x, gSpritePos.y, 100, 100, 0.0f);
-    printf("spritePos: %d %d\n", (int)gSpritePos.x, (int)gSpritePos.y);
-    render_sprite_quad(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2, 50, 50, 0.0f);
- 
+    // Render your scene here
+    render_scene();
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
+
 
 void display_fps(float fps);
 
@@ -538,13 +534,17 @@ void love_draw()
    
 
  
-  render_scene();
+ renderToFramebuffer();
 
   glClearColor(0,0,0, 1.0f);
-  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    // render framebuffer texture to screen
-  render_quad();
+  // Render framebuffer to screen with letterboxing
+  int windowWidth, windowHeight;
+  SDL_GetWindowSize(gWindow, &windowWidth, &windowHeight);
+  renderFramebufferToScreen(windowWidth, windowHeight);
+
+
   
 
   SDL_GL_SwapWindow(gWindow);
