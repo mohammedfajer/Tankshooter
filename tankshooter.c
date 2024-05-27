@@ -88,258 +88,12 @@ static SDL_Rect dstrect = {0, 0, WINDOW_WIDTH, WINDOW_HEIGHT};
 static SDL_GLContext gGlContext;
 
 
-
 GLuint createShaderProgram(const char* vertexSource, const char* fragmentSource);
 
+#include "math.c"
+#include "quad.c"
 
-// Quad Draw Test
-GLuint gSpriteQuadVBO, gSpriteQuadVAO, gSpriteQuadEBO;
-GLuint gSpriteShaderProgram;
-
-
-const char* g_sprite_vertex_shader_source = 
-    "#version 330 core\n"
-    "layout (location = 0) in vec3 position;\n"
-  
-    "uniform mat4 model;\n"
-    "uniform mat4 view;\n"
-    "uniform mat4 projection;\n"
-    
-    "void main() {\n"
-    "    gl_Position =  projection * view * model * vec4(position, 1.0);\n"
-    
-    "}\n";
-
-const char* g_sprite_fragment_shader_source =
-    "#version 330 core\n"
-    "out vec4 FragColor;\n"
-    
-    "void main() {\n"
-    "    FragColor = vec4(1.0, 0.5, 0.2, 1.0);\n" // Orange color
-    "}\n";
-
-
-typedef struct {
-  float x;
-  float y;
-  float z;
-} Vec3;
-
-typedef struct {
-  float data[4][4];
-} Mat4;
-
-static Vec3 gCameraPos = {0,0,0};
-
-// Function to create a translation matrix
-Mat4 createTranslationMatrix(Vec3 translation) {
-    Mat4 result = {{
-        {1.0, 0.0, 0.0, translation.x},
-        {0.0, 1.0, 0.0, translation.y},
-        {0.0, 0.0, 1.0, translation.z},
-        {0.0, 0.0, 0.0, 1.0}
-    }};
-    return result;
-}
-
-Mat4 getViewMatrix(Vec3 position) {
-    Vec3 cameraFront = {0.0f, 0.0f, -1.0f};
-    Vec3 cameraUp = {0.0f, 1.0f, 0.0f};
-    Mat4 viewMatrix;
-    
-    // Calculate the direction the camera is looking at
-    Vec3 target = {position.x, position.y, 20.0f};
-    Vec3 cameraDirection = {
-        target.x - position.x,
-        target.y - position.y,
-        target.z - position.z
-    };
-    
-    // Normalize camera direction
-    float length = sqrt(cameraDirection.x * cameraDirection.x + 
-                        cameraDirection.y * cameraDirection.y + 
-                        cameraDirection.z * cameraDirection.z);
-    cameraDirection.x /= length;
-    cameraDirection.y /= length;
-    cameraDirection.z /= length;
-
-    // Calculate the right vector
-    Vec3 cameraRight = {
-        cameraUp.y * cameraDirection.z - cameraUp.z * cameraDirection.y,
-        cameraUp.z * cameraDirection.x - cameraUp.x * cameraDirection.z,
-        cameraUp.x * cameraDirection.y - cameraUp.y * cameraDirection.x
-    };
-
-    // Normalize camera right
-    length = sqrt(cameraRight.x * cameraRight.x + 
-                  cameraRight.y * cameraRight.y + 
-                  cameraRight.z * cameraRight.z);
-    cameraRight.x /= length;
-    cameraRight.y /= length;
-    cameraRight.z /= length;
-
-    // Calculate the up vector
-    cameraUp.x = cameraDirection.y * cameraRight.z - cameraDirection.z * cameraRight.y;
-    cameraUp.y = cameraDirection.z * cameraRight.x - cameraDirection.x * cameraRight.z;
-    cameraUp.z = cameraDirection.x * cameraRight.y - cameraDirection.y * cameraRight.x;
-
-    // Set the view matrix values
-    viewMatrix.data[0][0] = cameraRight.x;
-    viewMatrix.data[0][1] = cameraRight.y;
-    viewMatrix.data[0][2] = cameraRight.z;
-    viewMatrix.data[0][3] = -position.x * cameraRight.x - position.y * cameraRight.y - position.z * cameraRight.z;
-    
-    viewMatrix.data[1][0] = cameraUp.x;
-    viewMatrix.data[1][1] = cameraUp.y;
-    viewMatrix.data[1][2] = cameraUp.z;
-    viewMatrix.data[1][3] = -position.x * cameraUp.x - position.y * cameraUp.y - position.z * cameraUp.z;
-    
-    viewMatrix.data[2][0] = -cameraDirection.x;
-    viewMatrix.data[2][1] = -cameraDirection.y;
-    viewMatrix.data[2][2] = -cameraDirection.z;
-    viewMatrix.data[2][3] = position.x * cameraDirection.x + position.y * cameraDirection.y + position.z * cameraDirection.z;
-    
-    viewMatrix.data[3][0] = 0.0f;
-    viewMatrix.data[3][1] = 0.0f;
-    viewMatrix.data[3][2] = 0.0f;
-    viewMatrix.data[3][3] = 1.0f;
-
-    return viewMatrix;
-}
-
-// Function to create a scale matrix
-Mat4 createScaleMatrix(Vec3 scale) {
-    Mat4 result = {{
-        {scale.x, 0.0, 0.0, 0.0},
-        {0.0, scale.y, 0.0, 0.0},
-        {0.0, 0.0, scale.z, 0.0},
-        {0.0, 0.0, 0.0, 1.0}
-    }};
-    return result;
-}
-
-// Function to create a rotation matrix around Z-axis
-Mat4 createRotationZMatrix(float angle) {
-    float cosAngle = cos(angle);
-    float sinAngle = sin(angle);
-    Mat4 result = {{
-        {cosAngle, -sinAngle, 0.0, 0.0},
-        {sinAngle, cosAngle, 0.0, 0.0},
-        {0.0, 0.0, 1.0, 0.0},
-        {0.0, 0.0, 0.0, 1.0}
-    }};
-    return result;
-}
-
-
-// Function to multiply two 4x4 matrices
-Mat4 multiplyMatrices(Mat4 a, Mat4 b) {
-    Mat4 result;
-    for (int i = 0; i < 4; i++) {
-        for (int j = 0; j < 4; j++) {
-            result.data[i][j] = 0;
-            for (int k = 0; k < 4; k++) {
-                result.data[i][j] += a.data[i][k] * b.data[k][j];
-            }
-        }
-    }
-    return result;
-}
-
-
-
-
-Mat4 createOrthographicMatrix(float left, float right, float bottom, float top, float nearPlane, float farPlane) {
-    Mat4 orthoMatrix = {{
-        {2.0f / (right - left), 0.0f, 0.0f, 0.0f},
-        {0.0f, 2.0f / (top - bottom), 0.0f, 0.0f},
-        {0.0f, 0.0f, -2.0f / (farPlane - nearPlane), 0.0f},
-        {-(right + left) / (right - left), -(top + bottom) / (top - bottom), -(farPlane + nearPlane) / (farPlane - nearPlane), 1.0f}
-    }};
-    return orthoMatrix;
-}
-
-
-
-
-
-
-Mat4 createIdentityMatrix() {
-    Mat4 result = {{
-        {1.0f, 0.0f, 0.0f, 0.0f},
-        {0.0f, 1.0f, 0.0f, 0.0f},
-        {0.0f, 0.0f, 1.0f, 0.0f},
-        {0.0f, 0.0f, 0.0f, 1.0f}
-    }};
-    return result;
-}
-
-Mat4 gProjectionMatrix;
-Mat4 gViewMatrix;
-
-Vec3 gSpritePos;
-
-void init_sprite_quad() {
-    // Define vertices for a simple quad
- 
-
-    float vertices[] = {
-        -0.5f, 0.5f, 0.0f,  // top right
-        0.5f, 0.5f, 0.0f,  // bottom right
-        0.5f, -0.5f, 0.0f,  // bottom left
-        -0.5f,  -0.5f, 0.0f   // top left 
-    };
-    unsigned int indices[] = {  // note that we start from 0!
-        0, 1, 2,   // first triangle
-        3, 0, 2    // second triangle
-    };  
-
-
-    // Create Vertex Array Object and Vertex Buffer Object
-    glGenVertexArrays(1, &gSpriteQuadVAO);
-    glGenBuffers(1, &gSpriteQuadVBO);
-    glGenBuffers(1, &gSpriteQuadEBO); // Add EBO for indices
-
-    // Bind the Vertex Array Object first, then bind and set vertex buffer(s) and attribute pointer(s)
-    glBindVertexArray(gSpriteQuadVAO);
-
-    glBindBuffer(GL_ARRAY_BUFFER, gSpriteQuadVBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, gSpriteQuadEBO); // Bind EBO
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW); // Pass indices data
-
-    // Position attribute
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (GLvoid*)0);
-    glEnableVertexAttribArray(0);
-
-    // Unbind VAO
-    glBindVertexArray(0);
-}
-
-
-
-void render_sprite_quad(float posX, float posY, float scaleX, float scaleY, float rotationZ) {
-    // Bind VAO and draw quad
-    glUseProgram(gSpriteShaderProgram);
-    glBindVertexArray(gSpriteQuadVAO);
-    // Set transformation matrices
-    Mat4 translationMatrix = createTranslationMatrix((Vec3) {posX, posY, 0.0});
-    Mat4 scaleMatrix = createScaleMatrix((Vec3){scaleX, scaleY, 1.0});
-    Mat4 rotationMatrix = createRotationZMatrix(rotationZ);
-    // Calculate model matrix by multiplying translation, rotation, and scale matrices
-    Mat4 modelMatrix = createIdentityMatrix();
-    modelMatrix = multiplyMatrices(modelMatrix, translationMatrix);
-    modelMatrix = multiplyMatrices(modelMatrix, rotationMatrix);
-    modelMatrix = multiplyMatrices(modelMatrix, scaleMatrix);
-
-    // ((T * R) * S)
-    int MatrixID = glGetUniformLocation(gSpriteShaderProgram, "model");
-    glUniformMatrix4fv(MatrixID, 1, GL_TRUE, &modelMatrix.data[0][0]);
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-    glBindVertexArray(0);
-}
-
+#include "fbo.c"
 
 GLuint createShaderProgram(const char* vertexSource, const char* fragmentSource) {
     GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
@@ -378,24 +132,59 @@ GLuint createShaderProgram(const char* vertexSource, const char* fragmentSource)
 }
 
 
+void renderFramebufferToScreen(int windowWidth, int windowHeight) {
+    float targetAspectRatio = (float)VIRTUAL_WIDTH / VIRTUAL_HEIGHT;
+    int width = windowWidth;
+    int height = (int)(width / targetAspectRatio + 0.5f);
+
+    if (height > windowHeight) {
+        height = windowHeight;
+        width = (int)(height * targetAspectRatio + 0.5f);
+    }
+
+    int vp_x = (windowWidth / 2) - (width / 2);
+    int vp_y = (windowHeight / 2) - (height / 2);
+
+    glViewport(vp_x, vp_y, width, height);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+   glUseProgram(gScreenShaderProgram);
+  glBindVertexArray(gQuadVAO);
+  glBindTexture(GL_TEXTURE_2D, gTextureColorBuffer);
+
+  glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+    // Set up and draw a quad with the framebuffer texture
+    // Assuming you have a function to draw a quad
+    
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+
+
+
 void render_scene()
 {
 
+  glBindFramebuffer(GL_FRAMEBUFFER, gFbo);
+ glViewport(0, 0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
   glEnable(GL_DEPTH_TEST);
 
-  // Clear the screen
-  glClearColor(40.0f / 255.0f, 45.0f / 255.0f, 52.0f / 255.0f, 1.0f);
-  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-  // Render your scene here (sprites, objects, etc.)
-  render_sprite_quad(gSpritePos.x, gSpritePos.y, 100, 100, 0.0f);
-
-
-
-  printf("spritePos: %d %d\n", (int)gSpritePos.x, (int)gSpritePos.y);
   
-  render_sprite_quad(WINDOW_WIDTH/2, WINDOW_HEIGHT/2, 50, 50, 0.0f);
+
+   
+
+    // Clear the viewport area with the desired background color
+    glClearColor(40.0f / 255.0f, 45.0f / 255.0f, 52.0f / 255.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    // Render your scene here (sprites, objects, etc.)
+    render_sprite_quad(gSpritePos.x, gSpritePos.y, 100, 100, 0.0f);
+    printf("spritePos: %d %d\n", (int)gSpritePos.x, (int)gSpritePos.y);
+    render_sprite_quad(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2, 50, 50, 0.0f);
  
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
 void display_fps(float fps);
@@ -492,14 +281,7 @@ void reset_render_target(SDL_Renderer *renderer)
   set_render_target(renderer, NULL);
 }
 
-void display_fps(float fps)
-{
-  const char *fpsStr = int_to_string(fps);
-  char buffer[512];
-  SDL_memset(buffer, 0, sizeof(buffer));
-  snprintf(buffer, sizeof(buffer), "%s %s", "FPS: ", fpsStr);
-  text_draw(&gSmallFont, gRenderer, 5, 5, buffer, false, (SDL_Color){0,255,0});
-}
+
 
 void love_load()
 {
@@ -540,8 +322,13 @@ void love_load()
   gSpriteShaderProgram = createShaderProgram(g_sprite_vertex_shader_source, g_sprite_fragment_shader_source);
 
 
-  // Set uniform matrices
-  // Assuming view and projection matrices are set elsewhere
+ 
+
+  init_framebuffer(VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
+  init_quad();
+
+  gScreenShaderProgram = createShaderProgram(gScreenVertexShaderSource,
+    gScreenFragmentShaderSource);
 
    glUseProgram(gSpriteShaderProgram);
 
@@ -617,8 +404,6 @@ void love_keyreleasedR(int key)
   keysR[key] = false;
 }
 
-
-
 void input_handling()
 {
   while (SDL_PollEvent(&gEvent))
@@ -650,7 +435,51 @@ void input_handling()
       { 
         if(gEvent.window.event == SDL_WINDOWEVENT_RESIZED)
         {
-          glViewport(0, 0, gEvent.window.data1,  gEvent.window.data2);
+          // int width, height;
+          // float targetAspectRatio = (float)VIRTUAL_WIDTH / VIRTUAL_HEIGHT;
+
+          // width = WINDOW_WIDTH;
+          // height = (int)(width / targetAspectRatio + 0.5f);
+
+          // if (height > WINDOW_HEIGHT) {
+          //     height = WINDOW_HEIGHT;
+          //     width = (int)(height * targetAspectRatio + 0.5f);
+          // }
+
+          // int vp_x = (WINDOW_WIDTH / 2) - (width / 2);
+          // int vp_y = (WINDOW_HEIGHT / 2) - (height / 2);
+
+          // glViewport(vp_x, vp_y, width, height);
+
+          // glUseProgram(gSpriteShaderProgram);
+
+
+          // gProjectionMatrix = createOrthographicMatrix(0, width,  height, 0, -1.0F, 1.0f);
+  
+          // glUniformMatrix4fv(glGetUniformLocation(gSpriteShaderProgram, "projection"), 1, GL_FALSE, (const GLfloat *)gProjectionMatrix.data);
+
+
+
+          // gViewMatrix = getViewMatrix((Vec3){0, 0, 0.0});
+
+          // float scale_x = (float)WINDOW_WIDTH / (float)VIRTUAL_WIDTH;
+          // float scale_y = (float)WINDOW_HEIGHT / (float)VIRTUAL_HEIGHT;
+
+
+
+
+          // Mat4 scaleMatrix = createScaleMatrix((Vec3){scale_x, scale_y, 1.0});
+          // gViewMatrix = multiplyMatrices(gViewMatrix, scaleMatrix);
+
+          // glUniformMatrix4fv(glGetUniformLocation(gSpriteShaderProgram, "view"), 1, GL_FALSE, (const GLfloat *)gViewMatrix.data);
+
+
+          int windowWidth = gEvent.window.data1;
+        int windowHeight = gEvent.window.data2;
+
+        // Adjust viewport and projection for letterboxing
+        renderFramebufferToScreen(windowWidth, windowHeight);
+
         }
         if(gEvent.window.event == SDL_WINDOWEVENT_SIZE_CHANGED)
         {    
@@ -662,8 +491,6 @@ void input_handling()
     }    
   }
 }
-
-
 
 void love_update(float dt)
 {
@@ -707,11 +534,17 @@ void love_update(float dt)
 
 void love_draw()
 {
-  
-  render_scene();
+
+   
 
  
+  render_scene();
 
+  glClearColor(0,0,0, 1.0f);
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    // render framebuffer texture to screen
+  render_quad();
   
 
   SDL_GL_SwapWindow(gWindow);
