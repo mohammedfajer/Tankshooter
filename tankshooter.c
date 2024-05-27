@@ -165,9 +165,9 @@ void renderFramebufferToScreen(int windowWidth, int windowHeight) {
 void render_scene()
 { 
   // Render your scene here (sprites, objects, etc.)
-  render_sprite_quad(gSpritePos.x, gSpritePos.y, 100, 100, 0.0f);
+  render_sprite_quad(gSpritePos.x, gSpritePos.y, 10, 10, 0.0f);
   printf("spritePos: %d %d\n", (int)gSpritePos.x, (int)gSpritePos.y);
-  render_sprite_quad(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2, 50, 50, 0.0f);
+  render_sprite_quad(VIRTUAL_WIDTH / 2, VIRTUAL_HEIGHT / 2, 50, 50, 0.0f);
 }
 
 void renderToFramebuffer() {
@@ -175,6 +175,14 @@ void renderToFramebuffer() {
     glViewport(0, 0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
     glClearColor(40.0f / 255.0f, 45.0f / 255.0f, 52.0f / 255.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+      // Set the shader and matrices for rendering
+    glUseProgram(gSpriteShaderProgram);
+    gProjectionMatrix = createOrthographicMatrix(0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT, 0, -1.0f, 1.0f);
+    glUniformMatrix4fv(glGetUniformLocation(gSpriteShaderProgram, "projection"), 1, GL_FALSE, (const GLfloat *)gProjectionMatrix.data);
+
+    gViewMatrix = getViewMatrix((Vec3){0, 0, 0.0});
+    glUniformMatrix4fv(glGetUniformLocation(gSpriteShaderProgram, "view"), 1, GL_FALSE, (const GLfloat *)gViewMatrix.data);
 
     // Render your scene here
     render_scene();
@@ -551,6 +559,9 @@ void love_draw()
 
 }
 
+const float FIXED_TIMESTEP = 1.0f / 60.0f;
+float accumulator = 0.0f;
+
 int main(int argc, char *argv[])
 {
   // Seed the random number generator
@@ -573,15 +584,29 @@ int main(int argc, char *argv[])
     Uint32 frameStart = SDL_GetTicks();
 
     input_handling();
-    love_update(dt);
-    love_draw();
-
 
 
     // Calculate delta time
     Uint32 currentTime = SDL_GetTicks();
     dt = (currentTime - lastTime) / 1000.0f;
     lastTime = currentTime;
+
+
+
+    accumulator += dt;
+
+    while(accumulator >= FIXED_TIMESTEP)
+    {
+      love_update(FIXED_TIMESTEP);
+      accumulator -= FIXED_TIMESTEP;
+    }
+
+    //love_update(dt);
+    love_draw();
+
+
+
+    
     
     // Increment frame count
     frameCount++;
