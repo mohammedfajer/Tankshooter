@@ -15,9 +15,8 @@
 #define FPS 60
 #define JUMP -1200
 
-#define VIRTUAL_WIDTH 320
-#define VIRTUAL_HEIGHT 180
-
+#define VIRTUAL_WIDTH 640 
+#define VIRTUAL_HEIGHT 360 
 
 #define MAX_KEYS SDL_NUM_SCANCODES
 

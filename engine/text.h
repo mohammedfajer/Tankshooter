@@ -5,6 +5,8 @@
 #include <SDL_ttf.h>
 #include <SDL.h>
 
+#include <glad/glad.h> // Include GLAD header
+
 typedef struct {
   int fontSize;
   TTF_Font *font;
@@ -14,6 +16,12 @@ typedef struct {
 
 bool text_init();
 bool text_setup_font(Text *text, const char *path, int fontSize);
+
+void text_draw_gl(Text *text, GLuint shaderProgram,
+               int xPos, int yPos,
+               const char *txt,
+               bool center,
+               SDL_Color color);
 
 void text_draw(
   Text *text,

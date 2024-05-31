@@ -87,12 +87,13 @@ static SDL_Rect dstrect = {0, 0, WINDOW_WIDTH, WINDOW_HEIGHT};
 // GL Context
 static SDL_GLContext gGlContext;
 
+const float FIXED_TIMESTEP = 1.0f / 60.0f;
+float accumulator = 0.0f;
 
 GLuint createShaderProgram(const char* vertexSource, const char* fragmentSource);
 
 #include "math.c"
 #include "quad.c"
-
 #include "fbo.c"
 
 GLuint createShaderProgram(const char* vertexSource, const char* fragmentSource) {
@@ -148,18 +149,10 @@ void renderFramebufferToScreen(int windowWidth, int windowHeight) {
     glViewport(vp_x, vp_y, width, height);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-   
-
+  
     // render framebuffer texture to screen
     render_quad();
-    
-
-    
 }
-
-
-
-
 
 
 void render_scene()
@@ -167,7 +160,13 @@ void render_scene()
   // Render your scene here (sprites, objects, etc.)
   render_sprite_quad(gSpritePos.x, gSpritePos.y, 10, 10, 0.0f);
   printf("spritePos: %d %d\n", (int)gSpritePos.x, (int)gSpritePos.y);
-  render_sprite_quad(VIRTUAL_WIDTH / 2, VIRTUAL_HEIGHT / 2, 50, 50, 0.0f);
+
+
+  static float angle = 0.0f;
+  angle += 0.01f;
+  render_sprite_quad(VIRTUAL_WIDTH / 2, VIRTUAL_HEIGHT / 2, 50, 50, angle);
+
+  
 }
 
 void renderToFramebuffer() {
@@ -178,11 +177,19 @@ void renderToFramebuffer() {
 
       // Set the shader and matrices for rendering
     glUseProgram(gSpriteShaderProgram);
-    gProjectionMatrix = createOrthographicMatrix(0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT, 0, -1.0f, 1.0f);
+    gProjectionMatrix = createOrthographicMatrix(0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT, 0, -1.0f, 100.0f);
     glUniformMatrix4fv(glGetUniformLocation(gSpriteShaderProgram, "projection"), 1, GL_FALSE, (const GLfloat *)gProjectionMatrix.data);
 
-    gViewMatrix = getViewMatrix((Vec3){0, 0, 0.0});
-    glUniformMatrix4fv(glGetUniformLocation(gSpriteShaderProgram, "view"), 1, GL_FALSE, (const GLfloat *)gViewMatrix.data);
+    gViewMatrix = getViewMatrix((Vec3){gCameraPos.x, gCameraPos.y, 0.0});
+    // Mat4 translateCamera = createTranslationMatrix2((Vec3){gCameraPosx, gCameraPos.y, 0.0f});
+    // gViewMatrix = multiplyMatrices(gViewMatrix, translateCamera);
+    glUniformMatrix4fv(glGetUniformLocation(gSpriteShaderProgram, "view"), 1, GL_TRUE, (const GLfloat *)gViewMatrix.data);
+
+    // Assuming you have a way to get the current time, e.g., using SDL_GetTicks()
+float time = SDL_GetTicks() / 1000.0f; // Convert milliseconds to seconds
+
+glUseProgram(gSpriteShaderProgram);
+glUniform1f(glGetUniformLocation(gSpriteShaderProgram, "time"), time);
 
     // Render your scene here
     render_scene();
@@ -226,6 +233,15 @@ void init_sdl_ttf()
     return;
   }
 
+  // Set OpenGL attributes
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+  SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+  SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 1); // Enable multisampling
+  SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 4); // Choose the number of samples (4 in this case)
+
+
   text_init();
 
   sound_effect_init();
@@ -250,6 +266,10 @@ void init_sdl_ttf()
 
   // Enable V-Sync
   SDL_GL_SetSwapInterval(1);
+
+  // Enable multisampling
+  glEnable(GL_MULTISAMPLE);
+  
 
   // Set viewport
   glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
@@ -285,8 +305,6 @@ void reset_render_target(SDL_Renderer *renderer)
   set_render_target(renderer, NULL);
 }
 
-
-
 void love_load()
 {
   gRenderTexture = engine_create_virtual_resolution(VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
@@ -298,7 +316,6 @@ void love_load()
 
   // Init Global Spries  
   
-
   // Init Global Sounds
   sound_effect_load(&gPaddleHitSoundEffect, "./data/sounds/paddle_hit.wav");
   sound_effect_load(&gScoreSoundEffect, "./data/sounds/score.wav");
@@ -316,8 +333,6 @@ void love_load()
 
   sound_music_load(&gMusic, "./data/sounds/music.wav"); 
 
-
-
   // Init Keys
   SDL_memset(keys, 0, SDL_NUM_SCANCODES * sizeof(bool));
   SDL_memset(keysR, 0, SDL_NUM_SCANCODES * sizeof(bool));
@@ -325,18 +340,13 @@ void love_load()
   init_sprite_quad();
   gSpriteShaderProgram = createShaderProgram(g_sprite_vertex_shader_source, g_sprite_fragment_shader_source);
 
-
- 
-
   init_framebuffer(VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
   init_quad();
 
   gScreenShaderProgram = createShaderProgram(gScreenVertexShaderSource,
     gScreenFragmentShaderSource);
 
-   glUseProgram(gSpriteShaderProgram);
-
-  gViewMatrix = createIdentityMatrix();
+  glUseProgram(gSpriteShaderProgram);
 
   gViewMatrix = getViewMatrix((Vec3){0,0, 0.0});
   
@@ -345,9 +355,6 @@ void love_load()
   glUniformMatrix4fv(glGetUniformLocation(gSpriteShaderProgram, "projection"), 1, GL_FALSE, (const GLfloat *)gProjectionMatrix.data);
 
   gSpritePos = (Vec3){0,0,0};
-
-
-
 }
 
 void love_keypressed(int key)
@@ -439,55 +446,17 @@ void input_handling()
       { 
         if(gEvent.window.event == SDL_WINDOWEVENT_RESIZED)
         {
-          // int width, height;
-          // float targetAspectRatio = (float)VIRTUAL_WIDTH / VIRTUAL_HEIGHT;
-
-          // width = WINDOW_WIDTH;
-          // height = (int)(width / targetAspectRatio + 0.5f);
-
-          // if (height > WINDOW_HEIGHT) {
-          //     height = WINDOW_HEIGHT;
-          //     width = (int)(height * targetAspectRatio + 0.5f);
-          // }
-
-          // int vp_x = (WINDOW_WIDTH / 2) - (width / 2);
-          // int vp_y = (WINDOW_HEIGHT / 2) - (height / 2);
-
-          // glViewport(vp_x, vp_y, width, height);
-
-          // glUseProgram(gSpriteShaderProgram);
-
-
-          // gProjectionMatrix = createOrthographicMatrix(0, width,  height, 0, -1.0F, 1.0f);
-  
-          // glUniformMatrix4fv(glGetUniformLocation(gSpriteShaderProgram, "projection"), 1, GL_FALSE, (const GLfloat *)gProjectionMatrix.data);
-
-
-
-          // gViewMatrix = getViewMatrix((Vec3){0, 0, 0.0});
-
-          // float scale_x = (float)WINDOW_WIDTH / (float)VIRTUAL_WIDTH;
-          // float scale_y = (float)WINDOW_HEIGHT / (float)VIRTUAL_HEIGHT;
-
-
-
-
-          // Mat4 scaleMatrix = createScaleMatrix((Vec3){scale_x, scale_y, 1.0});
-          // gViewMatrix = multiplyMatrices(gViewMatrix, scaleMatrix);
-
-          // glUniformMatrix4fv(glGetUniformLocation(gSpriteShaderProgram, "view"), 1, GL_FALSE, (const GLfloat *)gViewMatrix.data);
-
-
           int windowWidth = gEvent.window.data1;
-        int windowHeight = gEvent.window.data2;
+          int windowHeight = gEvent.window.data2;
 
-        // Adjust viewport and projection for letterboxing
-        renderFramebufferToScreen(windowWidth, windowHeight);
 
+                   
+
+
+          // Adjust viewport and projection for letterboxing
+          renderFramebufferToScreen(windowWidth, windowHeight);
         }
-        if(gEvent.window.event == SDL_WINDOWEVENT_SIZE_CHANGED)
-        {    
-        }
+        
       } break;
 
       default:
@@ -498,69 +467,55 @@ void input_handling()
 
 void love_update(float dt)
 {
+  const Uint8* states = SDL_GetKeyboardState(NULL);
+
+  
 
 
-  if(love_wasPressedR(SDL_SCANCODE_UP))
+  if(states[SDL_SCANCODE_UP])
   {
-    gSpritePos.y -= 50 * dt;
+    gSpritePos.y -= (int) 20 * dt * 2.5f ;
   }
-   if(love_wasPressedR(SDL_SCANCODE_RIGHT))
+  if(states[SDL_SCANCODE_DOWN])
   {
-    gSpritePos.x += 50 * dt;
+    gSpritePos.y += (int)20 * dt * 2.5f;
   }
-   if(love_wasPressedR(SDL_SCANCODE_LEFT))
+  
+  if(states[SDL_SCANCODE_RIGHT])
   {
-    gSpritePos.x -= 50 * dt;
+    gSpritePos.x += (int)20 * dt * 2.5f;
   }
-   if(love_wasPressedR(SDL_SCANCODE_DOWN))
+  if(states[SDL_SCANCODE_LEFT])
   {
-    gSpritePos.y += 50 * dt;
+    gSpritePos.x -= (int)20 * dt * 2.5f;
   }
+   
 
   if(love_wasPressedR(SDL_SCANCODE_C))
   {
-    gCameraPos.x -= 60 * dt;
+    gCameraPos.x -= (0.25f * dt);
   }
-
-
-  glUseProgram(gSpriteShaderProgram);
-
-  gViewMatrix = getViewMatrix(gCameraPos);
-
-  // Transpose if its in row-major as opengl wants it in colum major
-  glUniformMatrix4fv(glGetUniformLocation(gSpriteShaderProgram, "view"), 1, GL_TRUE, (const GLfloat *)gViewMatrix.data);
 
   if(love_wasPressed(SDL_SCANCODE_ESCAPE)) gRunning = false;
 
-  // Reset keys array
-  SDL_memset(keys, 0, SDL_NUM_SCANCODES * sizeof(bool));
+   //SDL_memset(keys, 0, SDL_NUM_SCANCODES * sizeof(bool));
+  //SDL_memset(keysR, 0, SDL_NUM_SCANCODES * sizeof(bool));
 }
 
 void love_draw()
 {
-
-   
-
- 
- renderToFramebuffer();
+  renderToFramebuffer();
 
   glClearColor(0,0,0, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
   // Render framebuffer to screen with letterboxing
   int windowWidth, windowHeight;
   SDL_GetWindowSize(gWindow, &windowWidth, &windowHeight);
   renderFramebufferToScreen(windowWidth, windowHeight);
 
-
-  
-
   SDL_GL_SwapWindow(gWindow);
-
 }
-
-const float FIXED_TIMESTEP = 1.0f / 60.0f;
-float accumulator = 0.0f;
 
 int main(int argc, char *argv[])
 {
@@ -583,8 +538,10 @@ int main(int argc, char *argv[])
   {
     Uint32 frameStart = SDL_GetTicks();
 
-    input_handling();
 
+    // TODO(mo): digest everything and find way to solve diagonal movement jitter.
+
+    input_handling();
 
     // Calculate delta time
     Uint32 currentTime = SDL_GetTicks();
@@ -592,37 +549,36 @@ int main(int argc, char *argv[])
     lastTime = currentTime;
 
 
+    
 
     accumulator += dt;
-
     while(accumulator >= FIXED_TIMESTEP)
     {
       love_update(FIXED_TIMESTEP);
       accumulator -= FIXED_TIMESTEP;
+
+
+     
     }
 
     //love_update(dt);
     love_draw();
 
+    // // Increment frame count
+    // frameCount++;
 
-
+    // // Calculate FPS every second
+    // if (SDL_GetTicks() - fpsLastTime >= 1000) {
+    //     fpsCounter = frameCount / ((SDL_GetTicks() - fpsLastTime) / 1000.0f);
+    //     frameCount = 0;
+    //     fpsLastTime = SDL_GetTicks();
+    // }
     
-    
-    // Increment frame count
-    frameCount++;
-
-    // Calculate FPS every second
-    if (SDL_GetTicks() - fpsLastTime >= 1000) {
-        fpsCounter = frameCount / ((SDL_GetTicks() - fpsLastTime) / 1000.0f);
-        frameCount = 0;
-        fpsLastTime = SDL_GetTicks();
-    }
-    
-    // Frame time management
-    Uint32 frameTime = SDL_GetTicks() - frameStart;
-    if (frameTime < FRAME_DELAY) {
-        SDL_Delay(FRAME_DELAY - frameTime);
-    }
+    // // Frame time management
+    // Uint32 frameTime = SDL_GetTicks() - frameStart;
+    // if (frameTime < FRAME_DELAY) {
+    //     SDL_Delay(FRAME_DELAY - frameTime);
+    // }
   }
   return 0;
 }

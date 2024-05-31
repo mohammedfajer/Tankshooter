@@ -17,14 +17,25 @@ const char* g_sprite_vertex_shader_source =
     
     "}\n";
 
+// const char* g_sprite_fragment_shader_source =
+//     "#version 330 core\n"
+//     "out vec4 FragColor;\n"
+    
+//     "void main() {\n"
+//     "    FragColor = vec4(1.0, 0.5, 0.2, 1.0);\n" // Orange color
+//     "}\n";
+
 const char* g_sprite_fragment_shader_source =
     "#version 330 core\n"
     "out vec4 FragColor;\n"
     
-    "void main() {\n"
-    "    FragColor = vec4(1.0, 0.5, 0.2, 1.0);\n" // Orange color
-    "}\n";
+    "uniform float time;\n"  // Uniform variable to pass the current time
 
+    "void main() {\n"
+    "    float intensity = abs(sin(time));\n"
+    "    vec3 color = mix(vec3(1.0, 0.5, 0.2), vec3(0.2, 0.5, 1.0), intensity);\n" // Pulsating between orange and blue
+    "    FragColor = vec4(color, 1.0);\n"
+    "}\n";
 
 
 Mat4 gProjectionMatrix;
@@ -42,6 +53,8 @@ void init_sprite_quad() {
         0.5f, -0.5f, 0.0f,  // bottom left
         -0.5f,  -0.5f, 0.0f   // top left 
     };
+
+    
     unsigned int indices[] = {  // note that we start from 0!
         0, 1, 2,   // first triangle
         3, 0, 2    // second triangle
@@ -77,14 +90,22 @@ void render_sprite_quad(float posX, float posY, float scaleX, float scaleY, floa
     glUseProgram(gSpriteShaderProgram);
     glBindVertexArray(gSpriteQuadVAO);
     // Set transformation matrices
-    Mat4 translationMatrix = createTranslationMatrix2((Vec3) {posX, posY, 0.0});
+    Mat4 translationMatrix = createTranslationMatrix2((Vec3) {(int)posX, (int)posY, 0.0});
     Mat4 scaleMatrix = createScaleMatrix((Vec3){scaleX, scaleY, 1.0});
     Mat4 rotationMatrix = createRotationZMatrix(rotationZ);
     // Calculate model matrix by multiplying translation, rotation, and scale matrices
     Mat4 modelMatrix = createIdentityMatrix();
     
     modelMatrix = multiplyMatrices(modelMatrix, scaleMatrix);
+
+
+  
+    
+  
     modelMatrix = multiplyMatrices(modelMatrix, rotationMatrix);
+    
+    
+    
     modelMatrix = multiplyMatrices(modelMatrix, translationMatrix);
 
     // ((T * R) * S)

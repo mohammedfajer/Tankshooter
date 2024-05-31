@@ -36,6 +36,36 @@ const char* gScreenFragmentShaderSource = "#version 330 core\n"
     "    FragColor = texture(screenTexture, TexCoord );\n"
     "}\n\0";
 
+// const char* gScreenFragmentShaderSource = "#version 330 core\n"
+//     "out vec4 FragColor;\n"
+//     "in vec2 TexCoord;\n"
+//     "uniform sampler2D screenTexture;\n"
+//     "uniform float time;\n"
+//     "uniform vec2 resolution;\n"
+
+//     "void main()\n"
+//     "{\n"
+//     "    // Apply a wave distortion to the texture coordinates\n"
+//     "    float wave = sin(TexCoord.y * 10.0 + time) * 0.01;\n"
+//     "    vec2 distortedTexCoord = vec2(TexCoord.x + wave, TexCoord.y);\n"
+    
+//     "    // Sample the texture\n"
+//     "    vec4 color = texture(screenTexture, distortedTexCoord);\n"
+
+//     "    // Color shifting effect\n"
+//     "    float red = color.r * (0.5 + 0.5 * sin(time));\n"
+//     "    float green = color.g * (0.5 + 0.5 * sin(time + 2.0));\n"
+//     "    float blue = color.b * (0.5 + 0.5 * sin(time + 4.0));\n"
+//     "    vec4 colorShifted = vec4(red, green, blue, 1.0);\n"
+
+//     "    // Vignette effect\n"
+//     "    vec2 position = (TexCoord - 0.5) * resolution;\n"
+//     "    float vignette = smoothstep(0.5, 0.9, length(position) / max(resolution.x, resolution.y));\n"
+//     "    vec4 finalColor = mix(colorShifted * cos(vignette), colorShifted * vignette, 0.5);\n"
+
+//     "    FragColor = finalColor;\n"
+//     "}\n";
+
 
 void init_quad()
 {
@@ -62,11 +92,21 @@ void init_quad()
 
 void render_quad()
 {
-  glDisable(GL_DEPTH_TEST);
+  //glDisable(GL_DEPTH_TEST);
 
-  glClear(GL_COLOR_BUFFER_BIT);
+  //glClear(GL_COLOR_BUFFER_BIT);
 
   glUseProgram(gScreenShaderProgram);
+
+   // Set the time uniform
+  float time = SDL_GetTicks() / 1000.0f; // Convert milliseconds to seconds
+  glUniform1f(glGetUniformLocation(gScreenShaderProgram, "time"), time);
+
+  // Set the resolution uniform
+   int windowWidth, windowHeight;
+  SDL_GetWindowSize(gWindow, &windowWidth, &windowHeight);
+  glUniform2f(glGetUniformLocation(gScreenShaderProgram, "resolution"), (float)windowWidth , (float)windowHeight );
+
   glBindVertexArray(gQuadVAO);
   glBindTexture(GL_TEXTURE_2D, gTextureColorBuffer);
 
@@ -74,6 +114,8 @@ void render_quad()
 
   glBindVertexArray(0);
 }
+
+
 
 
 void init_framebuffer(int width, int height)
@@ -84,7 +126,7 @@ void init_framebuffer(int width, int height)
   glGenTextures(1, &gTextureColorBuffer);
   glBindTexture(GL_TEXTURE_2D, gTextureColorBuffer);
 
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width , height , 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
 
   // Filtering
   // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -101,7 +143,7 @@ void init_framebuffer(int width, int height)
   GLuint rbo;
   glGenRenderbuffers(1, &rbo);
   glBindRenderbuffer(GL_RENDERBUFFER, rbo);
-  glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, width, height);
+  glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, width , height );
   glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo);
 
   if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
