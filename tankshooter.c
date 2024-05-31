@@ -20,6 +20,7 @@
 #include "./engine/graphics.h"
 #include "./engine/init.h"
 #include "./engine/win32_fileIO.h"
+#include "./engine/gl_texture.h"
 
 typedef struct {
   int borderWidth;
@@ -296,6 +297,10 @@ void init_sdl_ttf()
 
   // Enable multisampling
   glEnable(GL_MULTISAMPLE);
+
+  glEnable(GL_BLEND); // Enable blending for transparency
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
   
 
   // Set viewport
@@ -391,7 +396,9 @@ void love_load()
     add_quad_color(&gQuadBatch, (Vec2){100, 100}, (Vec2){50, 50}, (Vec4){1,0,0,1});
     add_quad_color(&gQuadBatch, (Vec2){200, 200}, (Vec2){100, 100}, (Vec4){0, 1, 0, 1});
 
-
+    GLuint textureId = loadTexture("./data/graphics/arrows.png");
+    gQuadBatch.globalTexId = textureId;
+    add_quad_texture(&gQuadBatch, (Vec2){WINDOW_WIDTH/2, 200}, (Vec2){100, 100}, (Vec4){0, 1, 0, 1}, textureId);
  
 }
 

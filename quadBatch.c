@@ -6,6 +6,8 @@
 typedef struct {
   Vec2 position;
   Vec4 color;
+  Vec2 texCoord;
+  float texID;
 } Vertex;
 
 typedef struct {
@@ -23,6 +25,8 @@ typedef struct {
 
   Mat4 viewMatrix;
   Mat4 projectionMatrix;
+
+  GLuint globalTexId;
 
 } QuadBatch;
 
@@ -55,8 +59,8 @@ void init_quad_batch(QuadBatch *q) {
   q->quad_count = 0;
 
   // Load and compile shaders
-  char *vs = readFile("./data/shaders/quadvs.txt");
-  char *fs = readFile("./data/shaders/quadfs.txt");
+  char *vs = readFile("./data/shaders/texturedquad.vs");
+  char *fs = readFile("./data/shaders/texturedquad.fs");
 
   printf("VS %s\n", vs);
   printf("VS %s\n", fs);
@@ -73,13 +77,9 @@ void init_quad_batch(QuadBatch *q) {
   q->projectionMatrix = createOrthographicMatrix(0, WINDOW_WIDTH,  WINDOW_HEIGHT, 0, -1.0F, 1.0f);
   q->viewMatrix = createIdentityMatrix();
 
-
-
   glUniformMatrix4fv(glGetUniformLocation(q->shaderProgram, "projection"), 1, GL_FALSE, (const GLfloat *)q->projectionMatrix.data);
   glUniformMatrix4fv(glGetUniformLocation(q->shaderProgram, "view"), 1, GL_FALSE, (const GLfloat *)q->viewMatrix.data);
   
- 
-
   generate_indices(q);
   generate_render_objects(q);
 }
@@ -136,6 +136,35 @@ void add_quad_color(QuadBatch *q, Vec2 position, Vec2 size, Vec4 color)
   q->quad_count++;
 }
 
+void add_quad_texture(QuadBatch *q, Vec2 position, Vec2 size, Vec4 color, float textureId)
+{
+  int x = position.x;
+  int y = position.y;
+  int w = size.x;
+  int h = size.y;
+  int r = color.x;
+  int g = color.y;
+  int b = color.z;
+  int a = color.w;
+
+  // Calculate vertices
+  Vertex v0 = { {x, y + h}, {r,g,b,a}, {0.0f, 0.0f}, textureId };
+  Vertex v1 = { {x + w, y + h}, {r,g,b,a}, {1.0f, 0.0f}, textureId };
+  Vertex v2 = { {x  + w, y}, {r,g,b,a}, {1.0f, 1.0f}, textureId};
+  Vertex v3 = { {x , y }, {r,g,b,a} , {0.0f, 1.0f}, textureId};
+
+  // Add vertices to the array
+  int base_index = q->quad_count * 4; // Calculate the base index for the new quad
+  q->vertices[base_index + 0] = v0;
+  q->vertices[base_index + 1] = v1;
+  q->vertices[base_index + 2] = v2;
+  q->vertices[base_index + 3] = v3;
+
+  // Update quad count
+  q->quad_count++;
+}
+
+
 // Generate VAO, VBO, EBO for rendering
 void generate_render_objects(QuadBatch *q) {
     // Generate and bind VAO
@@ -158,6 +187,10 @@ void generate_render_objects(QuadBatch *q) {
 
     glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)(2 * sizeof(float))); // Color
     glEnableVertexAttribArray(1);
+
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)(6 * sizeof(float))); // Color
+    glEnableVertexAttribArray(2);
+
     
     // Unbind VAO
     glBindVertexArray(0);
@@ -177,13 +210,23 @@ void render_quad_batch(const QuadBatch *q) {
 
     // NOTE(mo): Not passing the view matrix in loop causes it to miss behave as if its reset every frame.
     glUniformMatrix4fv(glGetUniformLocation(q->shaderProgram, "view"), 1, GL_TRUE, (const float*)q->viewMatrix.data);
-    
+
     // Bind the index buffer
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, q->EBO);
 
     // Set the vertex attribute pointers
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)0);
     glEnableVertexAttribArray(0);
+
+    // Bind texture to a texture unit (e.g., GL_TEXTURE0)
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, q->globalTexId);
+
+
+    // Set the texture uniform in the shader to correspond to the texture unit
+    glUseProgram(q->shaderProgram);
+    glUniform1i(glGetUniformLocation(q->shaderProgram, "texture1"), 0); // 0 corresponds to GL_TEXTURE0
+
 
     // Draw the quads
     glDrawElements(GL_TRIANGLES, q->quad_count * 6, GL_UNSIGNED_INT, 0);

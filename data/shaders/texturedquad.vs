@@ -1,12 +1,14 @@
 #version 330 core
 layout(location = 0) in vec2 inPosition;
 layout(location = 1) in vec4 inColor;
+layout(location = 2) in vec2 inTexCoord;
 
 uniform mat4 view;
 uniform mat4 projection;
-
 uniform vec2 screenSize;
+
 out vec4 outColor;
+out vec2 TexCoord;
 
 void main()
 {
@@ -24,4 +26,5 @@ void main()
   gl_Position = ndcPos;
 
   outColor = inColor;
+  TexCoord = inTexCoord;
 }

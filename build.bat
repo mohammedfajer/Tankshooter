@@ -25,7 +25,7 @@ cl -FC -Zi /EHsc /std:c++20 ..\tankShooter\tankShooter.c  ^
     ..\tankShooter\engine\text.c ^
     ..\tankShooter\engine\utils.c ..\tankShooter\engine\image.c ^
     ..\tankShooter\engine\sound.c ..\tankShooter\engine\graphics.c ^
-    ..\tankShooter\engine\win32_fileIO.c ^
+    ..\tankShooter\engine\win32_fileIO.c ..\tankShooter\engine\gl_texture.c ^
     ..\tankShooter\engine\linkedlist.c ..\tankShooter\engine\init.c "%GLAD_PATH%\src\glad.c" ^
     /I"%SDL_PATH%\include" ^
     /I"%SDL_TTF_PATH%\include" ^
