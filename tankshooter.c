@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <assert.h>
+#include <stdlib.h> // Include the header for rand() function
 
 
 #include <SDL.h>
@@ -18,6 +19,7 @@
 #include "./engine/sound.h"
 #include "./engine/graphics.h"
 #include "./engine/init.h"
+#include "./engine/win32_fileIO.h"
 
 typedef struct {
   int borderWidth;
@@ -55,12 +57,7 @@ Text gSmallFont;
 Text gMediumFont;
 Text gLargeFont;
 
-// Textures
-Sprite gBackgroundImg;
-Sprite gMainImg;
-Sprite gArrowsImg;
-Sprite gHeartsImg;
-Sprite gParticleImg;
+
 
 // Sound Effects
 
@@ -98,10 +95,17 @@ static SDL_GLContext gGlContext;
 const float FIXED_TIMESTEP = 1.0f / 60.0f;
 float accumulator = 0.0f;
 
+
+
+
 GLuint createShaderProgram(const char* vertexSource, const char* fragmentSource);
 
 #include "math.c"
 #include "quad.c"
+#include "quadBatch.c"
+
+// Quad Batch
+QuadBatch gQuadBatch;
 
 
 GLuint createShaderProgram(const char* vertexSource, const char* fragmentSource) {
@@ -163,19 +167,33 @@ void renderFramebufferToScreen(int windowWidth, int windowHeight) {
   
    
 }
+// Function to calculate sinusoidal motion between two endpoints and back
+void sinusoidalMotion(float *y, float t, float dt) {
+    // Calculate the amplitude and period of the sinusoidal motion
+    float amplitude = (VIRTUAL_HEIGHT - 20) / 2; // Adjusted amplitude to fit within the screen
+    float period = 2.f; // One full oscillation per second
 
+    // Calculate the intermediate position using sine function
+    *y = VIRTUAL_HEIGHT / 2 + amplitude * sin(2 * M_PI * t / period)  ;
+    
+   
+}
 
 void render_scene()
 { 
-  // Render your scene here (sprites, objects, etc.)
-  render_sprite_quad(gSpritePos.x, gSpritePos.y, 10, 10, 0.0f);
-  printf("spritePos: %d %d\n", (int)gSpritePos.x, (int)gSpritePos.y);
+  
 
 
-  static float angle = 0.0f;
-  angle += 0.01f;
-  render_sprite_quad(VIRTUAL_WIDTH / 2, VIRTUAL_HEIGHT / 2, 50, 50, angle);
+  // render_sprite_quad(VIRTUAL_WIDTH / 2, gSpritePos.y, 640 - 10, 10, 0.0f);
+  // printf("spritePos: %d %d\n", (int)gSpritePos.x, (int)gSpritePos.y);
 
+
+  // static float angle = 0.0f;
+  // angle += 0.01f;
+  // render_sprite_quad(VIRTUAL_WIDTH / 2, VIRTUAL_HEIGHT / 2, 50, 50, angle);
+
+  // Render the QuadBatch
+  render_quad_batch(&gQuadBatch);
   
 }
 
@@ -358,11 +376,55 @@ void love_load()
 
   gViewMatrix = getViewMatrix((Vec3){0,0, 0.0});
   
-  gProjectionMatrix = createOrthographicMatrix(0, WINDOW_WIDTH,  WINDOW_HEIGHT, 0, -1.0F, 1.0f);
+  gProjectionMatrix = createOrthographicMatrix(0, VIRTUAL_WIDTH,  VIRTUAL_HEIGHT, 0, -1.0F, 1.0f);
   glUniformMatrix4fv(glGetUniformLocation(gSpriteShaderProgram, "view"), 1, GL_FALSE, (const GLfloat *)gViewMatrix.data);
   glUniformMatrix4fv(glGetUniformLocation(gSpriteShaderProgram, "projection"), 1, GL_FALSE, (const GLfloat *)gProjectionMatrix.data);
 
   gSpritePos = (Vec3){0,0,0};
+
+
+  // Init Quad Batch
+  // Initialize the QuadBatch
+    init_quad_batch(&gQuadBatch);
+
+    // Add some quads
+    add_quad_color(&gQuadBatch, (Vec2){100, 100}, (Vec2){50, 50}, (Vec4){1,0,0,1});
+    add_quad_color(&gQuadBatch, (Vec2){200, 200}, (Vec2){100, 100}, (Vec4){0, 1, 0, 1});
+
+    // Define the grid dimensions
+int rows = 50;
+int cols = 20;
+
+// Calculate quad size based on screen dimensions
+float quadWidth = WINDOW_WIDTH / cols;
+float quadHeight = WINDOW_HEIGHT / rows;
+
+Vec4 red = {1,0,0,1};
+Vec4 blue = {0,0,1,1};
+Vec4 green = {0,1,0,1};
+
+// Loop to generate the grid of quads
+for (int row = 0; row < rows; row++) {
+    for (int col = 0; col < cols; col++) {
+        // Calculate position for the current quad
+        Vec2 position = {col * quadWidth, row * quadHeight};
+
+        // Calculate size for the current quad
+        Vec2 size = {quadWidth, quadHeight};
+
+        int ran = random(0, 2);
+        Vec4 color;
+        switch(ran){
+          case 0: color = red; break;
+          case 1: color = green; break;
+          case 2: color = blue; break;
+        }
+
+        // Add the quad with the calculated position, size, and color
+        add_quad_color(&gQuadBatch, position, size, color);
+    }
+}
+ 
 }
 
 void love_keypressed(int key)
@@ -508,6 +570,13 @@ void love_update(float dt)
 
    //SDL_memset(keys, 0, SDL_NUM_SCANCODES * sizeof(bool));
   //SDL_memset(keysR, 0, SDL_NUM_SCANCODES * sizeof(bool));
+
+
+  // Render your scene here (sprites, objects, etc.)
+  static float t = 0.0f; t+=0.01f;
+    float y;
+        sinusoidalMotion(&y, t, dt);
+  gSpritePos.y = y;
 }
 
 
@@ -547,30 +616,17 @@ ViewportRegion setViewport(int windowWidth, int windowHeight, int contentWidth, 
     region.viewportHeight = viewportHeight;
 
     gProjectionMatrix = createOrthographicMatrix(0, (float)VIRTUAL_WIDTH, (float)VIRTUAL_HEIGHT, 0.0f, -1.0f, 1.0f);
+
+   
+
     glUniformMatrix4fv(glGetUniformLocation(gSpriteShaderProgram, "projection"), 1, GL_FALSE, (const GLfloat *)gProjectionMatrix.data);
+    
+
+
 
     return (region);
 }
 
-void calculateViewportDimensions(int windowWidth, int windowHeight, int virtualWidth, int virtualHeight, int *borderWidth, int *borderHeight, int *viewportWidth, int *viewportHeight) {
-    float windowAspect = (float)windowWidth / windowHeight;
-    float virtualAspect = (float)virtualWidth / virtualHeight;
-
-    // Calculate the viewport dimensions based on the aspect ratio
-    if (windowAspect > virtualAspect) {
-        // Window is wider than the virtual screen
-        *viewportHeight = windowHeight;
-        *viewportWidth = (int)(virtualAspect * *viewportHeight);
-    } else {
-        // Window is taller than the virtual screen
-        *viewportWidth = windowWidth;
-        *viewportHeight = (int)(*viewportWidth / virtualAspect);
-    }
-
-    // Calculate the size of the borders
-    *borderWidth = (windowWidth - *viewportWidth) / 2;
-    *borderHeight = (windowHeight - *viewportHeight) / 2;
-}
 
 
 void love_draw()
@@ -583,23 +639,20 @@ void love_draw()
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
   // Set the viewport for content rendering
-  setViewport(windowWidth, windowHeight, VIRTUAL_WIDTH, VIRTUAL_HEIGHT); // Example content size (800x600)
-
-    // Calculate viewport dimensions
-    int borderWidth, borderHeight, viewportWidth, viewportHeight;
-    calculateViewportDimensions(windowWidth, windowHeight, VIRTUAL_WIDTH, VIRTUAL_HEIGHT, &borderWidth, &borderHeight, &viewportWidth, &viewportHeight);
+  ViewportRegion region = setViewport(windowWidth, windowHeight, VIRTUAL_WIDTH, VIRTUAL_HEIGHT); // Example content size (800x600)
 
    // Enable scissor testing to restrict rendering to the viewport area
     glEnable(GL_SCISSOR_TEST);
-    glScissor(borderWidth, borderHeight, viewportWidth, viewportHeight);
+    glScissor(region.borderWidth, region.borderHeight, region.viewportWidth, region.viewportHeight);
 
     // Render your scene with color A
       renderToFramebuffer();
 
+     
+
     // Disable scissor testing to render the black areas outside of the viewport
     glDisable(GL_SCISSOR_TEST);
-    // glClearColor(0.0f, 0.0f, 0.0f, 1.0f); // Set clear color to black again
-    // glClear(GL_COLOR_BUFFER_BIT); // Clear only the color buffer
+
 
   SDL_GL_SwapWindow(gWindow);
 }
@@ -621,6 +674,8 @@ int main(int argc, char *argv[])
  
   fpsCounter = 0;
 
+  
+ 
   while (gRunning)
   {
     Uint32 frameStart = SDL_GetTicks();
