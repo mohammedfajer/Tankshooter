@@ -135,7 +135,6 @@ Mat4 createRotationZMatrix(float angle) {
     return result;
 }
 
-
 // Function to multiply two 4x4 matrices
 Mat4 multiplyMatrices(Mat4 a, Mat4 b) {
     Mat4 result;
@@ -149,9 +148,6 @@ Mat4 multiplyMatrices(Mat4 a, Mat4 b) {
     }
     return result;
 }
-
-
-
 
 Mat4 createOrthographicMatrix(float left, float right, float bottom, float top, float nearPlane, float farPlane) {
     Mat4 orthoMatrix = {{
@@ -171,4 +167,15 @@ Mat4 createIdentityMatrix() {
         {0.0f, 0.0f, 0.0f, 1.0f}
     }};
     return result;
+}
+
+void printMatrix(Mat4 matrix)
+{
+    printf("Matrix Contents:\n");
+    for (int i = 0; i < 4; ++i) {
+        for (int j = 0; j < 4; ++j) {
+            printf("%.2f ", matrix.data[i][j]);
+        }
+        printf("\n");
+    }
 }

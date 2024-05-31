@@ -8,11 +8,6 @@ typedef struct {
   Vec4 color;
 } Vertex;
 
-// typedef struct {
-//   Vertex vertices[4];
-// } Quad;
-
-
 typedef struct {
   
   Vertex vertices[MAX_VERTICES];
@@ -26,6 +21,9 @@ typedef struct {
 
   GLuint shaderProgram;
 
+  Mat4 viewMatrix;
+  Mat4 projectionMatrix;
+
 } QuadBatch;
 
 // Function to initialize quad batch
@@ -36,8 +34,6 @@ void generate_indices(QuadBatch *q);
 
 // Function to generate VAO, EBO, VBO for rendering
 void generate_render_objects(QuadBatch *q);
-
-
 
 
 // Generate indices for the quad batch
@@ -65,10 +61,7 @@ void init_quad_batch(QuadBatch *q) {
   printf("VS %s\n", vs);
   printf("VS %s\n", fs);
 
-
   q->shaderProgram = createShaderProgram(vs, fs);
-
-  
 
   // Set the shader program
   glUseProgram(q->shaderProgram);
@@ -76,6 +69,16 @@ void init_quad_batch(QuadBatch *q) {
   // Set uniform values for screen size and color
   glUniform2f(glGetUniformLocation(q->shaderProgram, "screenSize"), WINDOW_WIDTH, WINDOW_HEIGHT);
   glUniform4f(glGetUniformLocation(q->shaderProgram, "color"),1, 0, 0, 1);
+
+  q->projectionMatrix = createOrthographicMatrix(0, WINDOW_WIDTH,  WINDOW_HEIGHT, 0, -1.0F, 1.0f);
+  q->viewMatrix = createIdentityMatrix();
+
+
+
+  glUniformMatrix4fv(glGetUniformLocation(q->shaderProgram, "projection"), 1, GL_FALSE, (const GLfloat *)q->projectionMatrix.data);
+  glUniformMatrix4fv(glGetUniformLocation(q->shaderProgram, "view"), 1, GL_FALSE, (const GLfloat *)q->viewMatrix.data);
+  
+ 
 
   generate_indices(q);
   generate_render_objects(q);
@@ -172,6 +175,9 @@ void render_quad_batch(const QuadBatch *q) {
     glBindBuffer(GL_ARRAY_BUFFER, q->VBO);
     glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(q->vertices), q->vertices); // Update vertex buffer data
 
+    // NOTE(mo): Not passing the view matrix in loop causes it to miss behave as if its reset every frame.
+    glUniformMatrix4fv(glGetUniformLocation(q->shaderProgram, "view"), 1, GL_TRUE, (const float*)q->viewMatrix.data);
+    
     // Bind the index buffer
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, q->EBO);
 

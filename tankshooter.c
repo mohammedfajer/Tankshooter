@@ -391,39 +391,7 @@ void love_load()
     add_quad_color(&gQuadBatch, (Vec2){100, 100}, (Vec2){50, 50}, (Vec4){1,0,0,1});
     add_quad_color(&gQuadBatch, (Vec2){200, 200}, (Vec2){100, 100}, (Vec4){0, 1, 0, 1});
 
-    // Define the grid dimensions
-int rows = 50;
-int cols = 20;
 
-// Calculate quad size based on screen dimensions
-float quadWidth = WINDOW_WIDTH / cols;
-float quadHeight = WINDOW_HEIGHT / rows;
-
-Vec4 red = {1,0,0,1};
-Vec4 blue = {0,0,1,1};
-Vec4 green = {0,1,0,1};
-
-// Loop to generate the grid of quads
-for (int row = 0; row < rows; row++) {
-    for (int col = 0; col < cols; col++) {
-        // Calculate position for the current quad
-        Vec2 position = {col * quadWidth, row * quadHeight};
-
-        // Calculate size for the current quad
-        Vec2 size = {quadWidth, quadHeight};
-
-        int ran = random(0, 2);
-        Vec4 color;
-        switch(ran){
-          case 0: color = red; break;
-          case 1: color = green; break;
-          case 2: color = blue; break;
-        }
-
-        // Add the quad with the calculated position, size, and color
-        add_quad_color(&gQuadBatch, position, size, color);
-    }
-}
  
 }
 
