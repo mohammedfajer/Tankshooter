@@ -19,6 +19,14 @@
 #include "./engine/graphics.h"
 #include "./engine/init.h"
 
+typedef struct {
+  int borderWidth;
+  int borderHeight;
+  int viewportWidth;
+  int viewportHeight;
+} ViewportRegion;
+
+
 // Game
 
 // SDL State
@@ -94,7 +102,7 @@ GLuint createShaderProgram(const char* vertexSource, const char* fragmentSource)
 
 #include "math.c"
 #include "quad.c"
-#include "fbo.c"
+
 
 GLuint createShaderProgram(const char* vertexSource, const char* fragmentSource) {
     GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
@@ -134,6 +142,9 @@ GLuint createShaderProgram(const char* vertexSource, const char* fragmentSource)
 
 
 void renderFramebufferToScreen(int windowWidth, int windowHeight) {
+
+
+
     float targetAspectRatio = (float)VIRTUAL_WIDTH / VIRTUAL_HEIGHT;
     int width = windowWidth;
     int height = (int)(width / targetAspectRatio + 0.5f);
@@ -150,8 +161,7 @@ void renderFramebufferToScreen(int windowWidth, int windowHeight) {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
   
-    // render framebuffer texture to screen
-    render_quad();
+   
 }
 
 
@@ -170,15 +180,14 @@ void render_scene()
 }
 
 void renderToFramebuffer() {
-    glBindFramebuffer(GL_FRAMEBUFFER, gFbo);
-    glViewport(0, 0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
+
     glClearColor(40.0f / 255.0f, 45.0f / 255.0f, 52.0f / 255.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
       // Set the shader and matrices for rendering
     glUseProgram(gSpriteShaderProgram);
-    gProjectionMatrix = createOrthographicMatrix(0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT, 0, -1.0f, 100.0f);
-    glUniformMatrix4fv(glGetUniformLocation(gSpriteShaderProgram, "projection"), 1, GL_FALSE, (const GLfloat *)gProjectionMatrix.data);
+    //gProjectionMatrix = createOrthographicMatrix(0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT, 0, -1.0f, 100.0f);
+    //glUniformMatrix4fv(glGetUniformLocation(gSpriteShaderProgram, "projection"), 1, GL_FALSE, (const GLfloat *)gProjectionMatrix.data);
 
     gViewMatrix = getViewMatrix((Vec3){gCameraPos.x, gCameraPos.y, 0.0});
     // Mat4 translateCamera = createTranslationMatrix2((Vec3){gCameraPosx, gCameraPos.y, 0.0f});
@@ -186,15 +195,15 @@ void renderToFramebuffer() {
     glUniformMatrix4fv(glGetUniformLocation(gSpriteShaderProgram, "view"), 1, GL_TRUE, (const GLfloat *)gViewMatrix.data);
 
     // Assuming you have a way to get the current time, e.g., using SDL_GetTicks()
-float time = SDL_GetTicks() / 1000.0f; // Convert milliseconds to seconds
+    float time = SDL_GetTicks() / 1000.0f; // Convert milliseconds to seconds
 
-glUseProgram(gSpriteShaderProgram);
-glUniform1f(glGetUniformLocation(gSpriteShaderProgram, "time"), time);
+    glUseProgram(gSpriteShaderProgram);
+    glUniform1f(glGetUniformLocation(gSpriteShaderProgram, "time"), time);
 
     // Render your scene here
     render_scene();
 
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    
 }
 
 
@@ -340,11 +349,10 @@ void love_load()
   init_sprite_quad();
   gSpriteShaderProgram = createShaderProgram(g_sprite_vertex_shader_source, g_sprite_fragment_shader_source);
 
-  init_framebuffer(VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
-  init_quad();
 
-  gScreenShaderProgram = createShaderProgram(gScreenVertexShaderSource,
-    gScreenFragmentShaderSource);
+
+
+
 
   glUseProgram(gSpriteShaderProgram);
 
@@ -454,7 +462,7 @@ void input_handling()
 
 
           // Adjust viewport and projection for letterboxing
-          renderFramebufferToScreen(windowWidth, windowHeight);
+          //renderFramebufferToScreen(windowWidth, windowHeight);
         }
         
       } break;
@@ -502,17 +510,96 @@ void love_update(float dt)
   //SDL_memset(keysR, 0, SDL_NUM_SCANCODES * sizeof(bool));
 }
 
+
+
+
+ViewportRegion setViewport(int windowWidth, int windowHeight, int contentWidth, int contentHeight) {
+
+    ViewportRegion region = {};
+
+    // Calculate the aspect ratios
+    float windowAspect = (float)windowWidth / (float)windowHeight;
+    float contentAspect = (float)contentWidth / (float)contentHeight;
+
+    int viewportWidth, viewportHeight;
+    int viewportX, viewportY;
+
+    if (windowAspect > contentAspect) {
+        // Window is wider than content
+        viewportHeight = windowHeight;
+        viewportWidth = (int)(contentAspect * viewportHeight);
+        viewportX = (windowWidth - viewportWidth) / 2;
+        viewportY = 0;
+    } else {
+        // Window is taller than content
+        viewportWidth = windowWidth;
+        viewportHeight = (int)(viewportWidth / contentAspect);
+        viewportX = 0;
+        viewportY = (windowHeight - viewportHeight) / 2;
+    }
+
+    // Set the viewport
+    glViewport(viewportX, viewportY, viewportWidth, viewportHeight);
+
+    region.borderWidth = viewportX;
+    region.borderHeight = viewportY;
+    region.viewportWidth = viewportWidth;
+    region.viewportHeight = viewportHeight;
+
+    gProjectionMatrix = createOrthographicMatrix(0, (float)VIRTUAL_WIDTH, (float)VIRTUAL_HEIGHT, 0.0f, -1.0f, 1.0f);
+    glUniformMatrix4fv(glGetUniformLocation(gSpriteShaderProgram, "projection"), 1, GL_FALSE, (const GLfloat *)gProjectionMatrix.data);
+
+    return (region);
+}
+
+void calculateViewportDimensions(int windowWidth, int windowHeight, int virtualWidth, int virtualHeight, int *borderWidth, int *borderHeight, int *viewportWidth, int *viewportHeight) {
+    float windowAspect = (float)windowWidth / windowHeight;
+    float virtualAspect = (float)virtualWidth / virtualHeight;
+
+    // Calculate the viewport dimensions based on the aspect ratio
+    if (windowAspect > virtualAspect) {
+        // Window is wider than the virtual screen
+        *viewportHeight = windowHeight;
+        *viewportWidth = (int)(virtualAspect * *viewportHeight);
+    } else {
+        // Window is taller than the virtual screen
+        *viewportWidth = windowWidth;
+        *viewportHeight = (int)(*viewportWidth / virtualAspect);
+    }
+
+    // Calculate the size of the borders
+    *borderWidth = (windowWidth - *viewportWidth) / 2;
+    *borderHeight = (windowHeight - *viewportHeight) / 2;
+}
+
+
 void love_draw()
 {
-  renderToFramebuffer();
-
-  glClearColor(0,0,0, 1.0f);
-  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-  // Render framebuffer to screen with letterboxing
+ 
   int windowWidth, windowHeight;
   SDL_GetWindowSize(gWindow, &windowWidth, &windowHeight);
-  renderFramebufferToScreen(windowWidth, windowHeight);
+
+  glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+  // Set the viewport for content rendering
+  setViewport(windowWidth, windowHeight, VIRTUAL_WIDTH, VIRTUAL_HEIGHT); // Example content size (800x600)
+
+    // Calculate viewport dimensions
+    int borderWidth, borderHeight, viewportWidth, viewportHeight;
+    calculateViewportDimensions(windowWidth, windowHeight, VIRTUAL_WIDTH, VIRTUAL_HEIGHT, &borderWidth, &borderHeight, &viewportWidth, &viewportHeight);
+
+   // Enable scissor testing to restrict rendering to the viewport area
+    glEnable(GL_SCISSOR_TEST);
+    glScissor(borderWidth, borderHeight, viewportWidth, viewportHeight);
+
+    // Render your scene with color A
+      renderToFramebuffer();
+
+    // Disable scissor testing to render the black areas outside of the viewport
+    glDisable(GL_SCISSOR_TEST);
+    // glClearColor(0.0f, 0.0f, 0.0f, 1.0f); // Set clear color to black again
+    // glClear(GL_COLOR_BUFFER_BIT); // Clear only the color buffer
 
   SDL_GL_SwapWindow(gWindow);
 }

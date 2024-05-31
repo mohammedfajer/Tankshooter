@@ -97,15 +97,7 @@ void render_sprite_quad(float posX, float posY, float scaleX, float scaleY, floa
     Mat4 modelMatrix = createIdentityMatrix();
     
     modelMatrix = multiplyMatrices(modelMatrix, scaleMatrix);
-
-
-  
-    
-  
     modelMatrix = multiplyMatrices(modelMatrix, rotationMatrix);
-    
-    
-    
     modelMatrix = multiplyMatrices(modelMatrix, translationMatrix);
 
     // ((T * R) * S)
