@@ -396,52 +396,38 @@ void love_load()
 
   {
     int windowWidth, windowHeight;
-    SDL_GetWindowSize(gWindow, &windowWidth, &windowHeight);
+SDL_GetWindowSize(gWindow, &windowWidth, &windowHeight);
 
+ViewportRegion region = setViewport(windowWidth, windowHeight, VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
 
-    ViewportRegion region = setViewport(windowWidth, windowHeight, VIRTUAL_WIDTH, VIRTUAL_HEIGHT); 
+// Calculate the aspect ratio of the viewport region
+float aspectRatio = (float)region.viewportWidth / region.viewportHeight;
 
+// Calculate the aspect ratio of the texture
+float textureAspectRatio = (float)texture.w / texture.h;
 
-    // Calculate the aspect ratio of the virtual resolution
-    float aspectRatio = (float)VIRTUAL_WIDTH / VIRTUAL_HEIGHT;
+float scaleX, scaleY;
 
-    // Calculate the aspect ratio of the window
-    float windowAspectRatio = (float)windowWidth / windowHeight;
+if (textureAspectRatio > aspectRatio) {
+    // Texture is wider than the viewport, so we need to adjust the height
+    scaleY = (float)region.viewportHeight / texture.h;
+    scaleX = scaleY * textureAspectRatio; // Maintain texture aspect ratio
+} else {
+    // Texture is taller than or equal to the viewport, so we need to adjust the width
+    scaleX = (float)region.viewportWidth / texture.w;
+    scaleY = scaleX / textureAspectRatio; // Maintain texture aspect ratio
+}
 
-    float scaleX, scaleY;
+// Ensure the scaled texture remains within the bounds of the viewport
+if (scaleX * texture.w > region.viewportWidth) {
+    scaleX = region.viewportWidth / texture.w;
+}
+if (scaleY * texture.h > region.viewportHeight) {
+    scaleY = region.viewportHeight / texture.h;
+}
 
-    if (windowAspectRatio > aspectRatio) {
-        // The window is wider than the virtual resolution, so we scale based on width
-        scaleX = (float)windowWidth / VIRTUAL_WIDTH;
-        scaleY = scaleX; // Maintain aspect ratio
-    } else {
-        // The window is taller than or equal to the virtual resolution, so we scale based on height
-        scaleY = (float)windowHeight / VIRTUAL_HEIGHT;
-        scaleX = scaleY; // Maintain aspect ratio
-    }
-
-    // Calculate the aspect ratio of the texture
-    float textureAspectRatio = (float)texture.w / texture.h;
-
-    // Adjust scaling factors to maintain texture aspect ratio
-    if (textureAspectRatio > aspectRatio) {
-        // Texture is wider than the virtual resolution, so we need to adjust the height
-        scaleY *= aspectRatio / textureAspectRatio;
-    } else {
-        // Texture is taller than or equal to the virtual resolution, so we need to adjust the width
-        scaleX *= textureAspectRatio / aspectRatio;
-    }
-
-    // Ensure the scaled texture remains within the bounds of VIRTUAL_WIDTH and VIRTUAL_HEIGHT
-    if (scaleX * texture.w > region.viewportWidth) {
-        scaleX = region.viewportWidth / texture.w;
-    }
-    if (scaleY * texture.h > region.viewportHeight) {
-        scaleY =  region.viewportHeight / texture.h;
-    }
-
-    // Now, use scaleX and scaleY to scale your texture appropriately
-    add_quad_texture(&gQuadBatch, (Vec2){1 , 1}, (Vec2){scaleX * VIRTUAL_WIDTH, scaleY * VIRTUAL_HEIGHT}, (Vec4){0, 1, 0, 1}, texture.id);
+// Now, use scaleX and scaleY to scale your texture appropriately
+add_quad_texture(&gQuadBatch, (Vec2){1 , 1}, (Vec2){scaleX * texture.w, scaleY * texture.h}, (Vec4){0, 1, 0, 1}, texture.id);
   }
 
  
