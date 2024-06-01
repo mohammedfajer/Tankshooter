@@ -5,10 +5,10 @@
 bool image_init()
 {
   // Init SDL Image
-  if (!(IMG_Init(IMG_INIT_PNG) & IMG_INIT_PNG))
+  if (!(IMG_Init(IMG_INIT_JPG | IMG_INIT_PNG) & (IMG_INIT_JPG | IMG_INIT_PNG)))
   {
-    printf("IMG_Init Error: %s\n", IMG_GetError());
-    return false;
+      printf("IMG_Init Error: %s\n", IMG_GetError());
+      return false;
   }
   return true;
 }

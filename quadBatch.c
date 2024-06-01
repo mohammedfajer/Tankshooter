@@ -70,11 +70,17 @@ void init_quad_batch(QuadBatch *q) {
   // Set the shader program
   glUseProgram(q->shaderProgram);
 
+
+  int windowWidth, windowHeight;
+  SDL_GetWindowSize(gWindow, &windowWidth, &windowHeight);
+
   // Set uniform values for screen size and color
-  glUniform2f(glGetUniformLocation(q->shaderProgram, "screenSize"), WINDOW_WIDTH, WINDOW_HEIGHT);
+  glUniform2f(glGetUniformLocation(q->shaderProgram, "screenSize"), windowWidth, windowHeight);
   glUniform4f(glGetUniformLocation(q->shaderProgram, "color"),1, 0, 0, 1);
 
-  q->projectionMatrix = createOrthographicMatrix(0, WINDOW_WIDTH,  WINDOW_HEIGHT, 0, -1.0F, 1.0f);
+
+
+  q->projectionMatrix = createOrthographicMatrix(0, windowWidth,  windowHeight, 0, -1.0F, 1.0f);
   q->viewMatrix = createIdentityMatrix();
 
   glUniformMatrix4fv(glGetUniformLocation(q->shaderProgram, "projection"), 1, GL_FALSE, (const GLfloat *)q->projectionMatrix.data);

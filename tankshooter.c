@@ -29,7 +29,7 @@ typedef struct {
   int viewportHeight;
 } ViewportRegion;
 
-
+ViewportRegion setViewport(int windowWidth, int windowHeight, int contentWidth, int contentHeight) ;
 // Game
 
 // SDL State
@@ -101,7 +101,7 @@ float accumulator = 0.0f;
 
 GLuint createShaderProgram(const char* vertexSource, const char* fragmentSource);
 
-#include "math.c"
+static Vec3 gCameraPos = {0,0,0};
 #include "quad.c"
 #include "quadBatch.c"
 
@@ -147,9 +147,6 @@ GLuint createShaderProgram(const char* vertexSource, const char* fragmentSource)
 
 
 void renderFramebufferToScreen(int windowWidth, int windowHeight) {
-
-
-
     float targetAspectRatio = (float)VIRTUAL_WIDTH / VIRTUAL_HEIGHT;
     int width = windowWidth;
     int height = (int)(width / targetAspectRatio + 0.5f);
@@ -165,8 +162,6 @@ void renderFramebufferToScreen(int windowWidth, int windowHeight) {
     glViewport(vp_x, vp_y, width, height);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-  
-   
 }
 // Function to calculate sinusoidal motion between two endpoints and back
 void sinusoidalMotion(float *y, float t, float dt) {
@@ -393,12 +388,62 @@ void love_load()
     init_quad_batch(&gQuadBatch);
 
     // Add some quads
-    add_quad_color(&gQuadBatch, (Vec2){100, 100}, (Vec2){50, 50}, (Vec4){1,0,0,1});
-    add_quad_color(&gQuadBatch, (Vec2){200, 200}, (Vec2){100, 100}, (Vec4){0, 1, 0, 1});
+    // add_quad_color(&gQuadBatch, (Vec2){100, 100}, (Vec2){50, 50}, (Vec4){1,0,0,1});
+    // add_quad_color(&gQuadBatch, (Vec2){200, 200}, (Vec2){100, 100}, (Vec4){0, 1, 0, 1});
 
-    GLuint textureId = loadTexture("./data/graphics/arrows.png");
-    gQuadBatch.globalTexId = textureId;
-    add_quad_texture(&gQuadBatch, (Vec2){WINDOW_WIDTH/2, 200}, (Vec2){100, 100}, (Vec4){0, 1, 0, 1}, textureId);
+    Texture2D texture = loadTexture("./data/graphics/background.png");
+    gQuadBatch.globalTexId = texture.id;
+
+  {
+    int windowWidth, windowHeight;
+    SDL_GetWindowSize(gWindow, &windowWidth, &windowHeight);
+
+
+    ViewportRegion region = setViewport(windowWidth, windowHeight, VIRTUAL_WIDTH, VIRTUAL_HEIGHT); 
+
+
+    // Calculate the aspect ratio of the virtual resolution
+    float aspectRatio = (float)VIRTUAL_WIDTH / VIRTUAL_HEIGHT;
+
+    // Calculate the aspect ratio of the window
+    float windowAspectRatio = (float)windowWidth / windowHeight;
+
+    float scaleX, scaleY;
+
+    if (windowAspectRatio > aspectRatio) {
+        // The window is wider than the virtual resolution, so we scale based on width
+        scaleX = (float)windowWidth / VIRTUAL_WIDTH;
+        scaleY = scaleX; // Maintain aspect ratio
+    } else {
+        // The window is taller than or equal to the virtual resolution, so we scale based on height
+        scaleY = (float)windowHeight / VIRTUAL_HEIGHT;
+        scaleX = scaleY; // Maintain aspect ratio
+    }
+
+    // Calculate the aspect ratio of the texture
+    float textureAspectRatio = (float)texture.w / texture.h;
+
+    // Adjust scaling factors to maintain texture aspect ratio
+    if (textureAspectRatio > aspectRatio) {
+        // Texture is wider than the virtual resolution, so we need to adjust the height
+        scaleY *= aspectRatio / textureAspectRatio;
+    } else {
+        // Texture is taller than or equal to the virtual resolution, so we need to adjust the width
+        scaleX *= textureAspectRatio / aspectRatio;
+    }
+
+    // Ensure the scaled texture remains within the bounds of VIRTUAL_WIDTH and VIRTUAL_HEIGHT
+    if (scaleX * texture.w > region.viewportWidth) {
+        scaleX = region.viewportWidth / texture.w;
+    }
+    if (scaleY * texture.h > region.viewportHeight) {
+        scaleY =  region.viewportHeight / texture.h;
+    }
+
+    // Now, use scaleX and scaleY to scale your texture appropriately
+    add_quad_texture(&gQuadBatch, (Vec2){1 , 1}, (Vec2){scaleX * VIRTUAL_WIDTH, scaleY * VIRTUAL_HEIGHT}, (Vec4){0, 1, 0, 1}, texture.id);
+  }
+
  
 }
 
