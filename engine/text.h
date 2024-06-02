@@ -4,6 +4,7 @@
 #include "common.h"
 #include <SDL_ttf.h>
 #include <SDL.h>
+#include "utils.h"
 
 #include <glad/glad.h> // Include GLAD header
 
@@ -21,7 +22,7 @@ void text_draw_gl(Text *text, GLuint shaderProgram,
                int xPos, int yPos,
                const char *txt,
                bool center,
-               SDL_Color color);
+               SDL_Color color, Mat4 *proj);
 
 void text_draw(
   Text *text,

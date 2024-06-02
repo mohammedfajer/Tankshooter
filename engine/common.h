@@ -7,8 +7,11 @@
 #define false 0
 #define true 1
 
-#define WINDOW_WIDTH 1920
-#define WINDOW_HEIGHT 1080
+// #define WINDOW_WIDTH 1920
+// #define WINDOW_HEIGHT 1080
+
+#define WINDOW_WIDTH 1600
+#define WINDOW_HEIGHT 900
 #define SIZE 200
 #define SPEED 600
 #define GRAVITY 600 

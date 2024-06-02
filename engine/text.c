@@ -29,15 +29,19 @@ void text_draw_gl(Text *text, GLuint shaderProgram,
                int xPos, int yPos,
                const char *txt,
                bool center,
-               SDL_Color color)
+               SDL_Color color, Mat4 *proj)
 {
     // Create surface
     SDL_Surface *surfaceMessage = TTF_RenderText_Solid(text->font, txt, color);
     if (!surfaceMessage)
     {
         printf("Failed to create a surface for text message: %s\n", TTF_GetError());
-        return;
+        exit(0);
+        
+
     }
+
+    printf("Surface created: %dx%d, %d bpp\n", surfaceMessage->w, surfaceMessage->h, surfaceMessage->format->BytesPerPixel);
 
     // Generate an OpenGL texture
     GLuint texture;
@@ -51,31 +55,51 @@ void text_draw_gl(Text *text, GLuint shaderProgram,
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
     // Specify the texture format and upload the pixel data
-    GLenum textureFormat = GL_RGBA;
-    if (surfaceMessage->format->BytesPerPixel == 4) // 32-bit
+    GLenum textureFormat;
+    // if (surfaceMessage->format->BytesPerPixel == 4) // 32-bit
+    // {
+    //     if (surfaceMessage->format->Rmask == 0x000000ff)
+    //         textureFormat = GL_RGBA;
+    //     else
+    //         textureFormat = GL_BGRA;
+    // }
+    // else // 24-bit
+    // {
+    //     if (surfaceMessage->format->Rmask == 0x000000ff)
+    //         textureFormat = GL_RGB;
+    //     else
+    //         textureFormat = GL_BGR;
+    // }
+
+    switch (surfaceMessage->format->BytesPerPixel)
     {
-        if (surfaceMessage->format->Rmask == 0x000000ff)
-            textureFormat = GL_RGBA;
-        else
-            textureFormat = GL_BGRA;
-    }
-    else // 24-bit
-    {
-        if (surfaceMessage->format->Rmask == 0x000000ff)
+        case 1: // Grayscale
+            textureFormat = GL_RED;
+            break;
+        case 3: // RGB
             textureFormat = GL_RGB;
-        else
-            textureFormat = GL_BGR;
+            break;
+        case 4: // RGBA
+            textureFormat = GL_RGBA;
+            break;
+        default:
+            printf("Unsupported pixel format\n");
+            return;
     }
 
+    printf("Uploading texture data: format=%d, width=%d, height=%d\n", textureFormat, surfaceMessage->w, surfaceMessage->h);
+
     glTexImage2D(GL_TEXTURE_2D, 0, textureFormat, surfaceMessage->w, surfaceMessage->h,
-     0, textureFormat, GL_UNSIGNED_BYTE, surfaceMessage->pixels);
+                 0, textureFormat, GL_UNSIGNED_BYTE, surfaceMessage->pixels);
+				 
+	// Query the texture to get the width and height of the rendered text
+    int textWidth = surfaceMessage->w;
+    int textHeight = surfaceMessage->h;
 
     // Free the surface since we now have the texture
     SDL_FreeSurface(surfaceMessage);
 
-    // Query the texture to get the width and height of the rendered text
-    int textWidth = surfaceMessage->w;
-    int textHeight = surfaceMessage->h;
+  
 
     // Calculate the position based on the center flag
     int drawX = xPos;
@@ -89,10 +113,10 @@ void text_draw_gl(Text *text, GLuint shaderProgram,
 
     // Set up vertex data and attribute pointers
     GLfloat vertices[] = {
-        drawX,         drawY,          0.0f, 0.0f,
-        drawX,         drawY + textHeight, 0.0f, 1.0f,
-        drawX + textWidth, drawY + textHeight, 1.0f, 1.0f,
-        drawX + textWidth, drawY,          1.0f, 0.0f
+        drawX,         drawY,                   0.0f, 1.0f,
+        drawX,         drawY + textHeight,      0.0f, 0.0f,
+        drawX + textWidth, drawY + textHeight,  1.0f, 0.0f,
+        drawX + textWidth, drawY,               1.0f, 1.0f
     };
 
     GLuint indices[] = {
@@ -127,8 +151,18 @@ void text_draw_gl(Text *text, GLuint shaderProgram,
     glBindTexture(GL_TEXTURE_2D, texture);
 
 
-    // Update Model, View, Project
-    
+    // Set the texture uniform in the shader
+    glUniform1i(glGetUniformLocation(shaderProgram, "textTexture"), 0);
+
+    // Set projection and model matrices
+    GLuint projectionLoc = glGetUniformLocation(shaderProgram, "projection");
+    GLuint modelLoc = glGetUniformLocation(shaderProgram, "model");
+
+    Mat4 model = createTranslationMatrix2((Vec3){drawX, drawY, 0.0f});
+   
+	
+	glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, (const GLfloat *)(*proj).data); 
+    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, (const GLfloat *) model.data) ;
 
     glBindVertexArray(VAO);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
@@ -139,6 +173,13 @@ void text_draw_gl(Text *text, GLuint shaderProgram,
     glDeleteBuffers(1, &EBO);
     glDeleteVertexArrays(1, &VAO);
     glDeleteTextures(1, &texture);
+
+    // Check for OpenGL errors
+    GLenum error = glGetError();
+    if (error != GL_NO_ERROR)
+    {
+        printf("OpenGL error: %d\n", error);
+    }
 }
 
 void text_draw(Text *text,

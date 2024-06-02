@@ -21,6 +21,14 @@ typedef struct {
   
 } Vec2;
 
+typedef struct {
+  int x;
+  int y;
+  
+} Vec2i;
+
+
+
 
 typedef struct {
   float data[4][4];
