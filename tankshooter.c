@@ -113,31 +113,43 @@ SDL_bool windowDragged = SDL_FALSE;
 int windowOffsetX = 0;
 int windowOffsetY = 0;
 
-// TODO(MO): Does the job not perfect but will leave it for note
-void move_window(SDL_Window* window, SDL_Event event, int mouseX, int mouseY)
-{
-     const int movementThreshold = 2; // Adjust this threshold as needed
 
-    if (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_LEFT) {
-        int mouseX, mouseY;
-        SDL_GetMouseState(&mouseX, &mouseY);
-        int windowX, windowY;
-        SDL_GetWindowPosition(window, &windowX, &windowY);
-        windowOffsetX = windowX - mouseX;
-        windowOffsetY = windowY - mouseY;
-        windowDragged = SDL_TRUE;
+SDL_HitTestResult MyCallback(SDL_Window* win, const SDL_Point* area, void* data)
+{
+    // Define the area where dragging should move the window
+    const int dragAreaSize = 100; // Adjust as needed
+    SDL_Rect dragArea = {0, 0, dragAreaSize, dragAreaSize};
+
+    // Check if the mouse pointer is within the drag area
+    if (SDL_PointInRect(area, &dragArea)) {
+        return SDL_HITTEST_DRAGGABLE;
     }
-    else if (event.type == SDL_MOUSEBUTTONUP && event.button.button == SDL_BUTTON_LEFT) {
-        windowDragged = SDL_FALSE;
-    }
-    else if (event.type == SDL_MOUSEMOTION && windowDragged) {
-        int mouseX, mouseY;
-        SDL_GetMouseState(&mouseX, &mouseY);
-        if (abs(mouseX - windowOffsetX) > movementThreshold || abs(mouseY - windowOffsetY) > movementThreshold) {
-            SDL_SetWindowPosition(window, mouseX + windowOffsetX, mouseY + windowOffsetY);
-        }
-    }
+
+    // Default: no action
+    return SDL_HITTEST_NORMAL;
 }
+
+
+// TODO(MO): Does the job not perfect but will leave it for note
+// void move_window(SDL_Window* window, SDL_Event event, int mouseX, int mouseY)
+// {
+//     if (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_LEFT) {
+//         SDL_SetWindowHitTest(window, MyCallback, NULL);
+
+//         int windowX, windowY;
+//         SDL_GetWindowPosition(window, &windowX, &windowY);
+//         windowOffsetX = windowX - mouseX;
+//         windowOffsetY = windowY - mouseY;
+//         windowDragged = SDL_TRUE;
+//     }
+//     else if (event.type == SDL_MOUSEBUTTONUP && event.button.button == SDL_BUTTON_LEFT) {
+//         SDL_SetWindowHitTest(window, NULL, NULL);
+//         windowDragged = SDL_FALSE;
+//     }
+//     else if (event.type == SDL_MOUSEMOTION && windowDragged) {
+//         SDL_SetWindowPosition(window, mouseX + windowOffsetX, mouseY + windowOffsetY);
+//     }
+// }
 
 GLuint createShaderProgram(const char* vertexSource, const char* fragmentSource) {
     GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
@@ -270,6 +282,8 @@ void init_sdl_ttf()
     }
 
    // SDL_SetWindowBordered(gWindow, false);
+
+    SDL_SetWindowHitTest(gWindow, MyCallback, NULL);
     
     opengl_init();
     init_glad();
@@ -331,6 +345,10 @@ void love_load()
     SDL_memset(keys, 0, SDL_NUM_SCANCODES * sizeof(bool));
     SDL_memset(keysR, 0, SDL_NUM_SCANCODES * sizeof(bool));
 
+
+    // Load and Play music
+    sound_music_load(&gMusic, "./data/sounds/menu.ogg");
+    sound_music_play(&gMusic, 1);
 
     // Init Fonts
     
@@ -481,7 +499,7 @@ void input_handling()
             case SDL_MOUSEBUTTONUP:
             case SDL_MOUSEMOTION:
             {
-                move_window(gWindow, gEvent, gEvent.motion.x, gEvent.motion.y);
+                //move_window(gWindow, gEvent, gEvent.motion.x, gEvent.motion.y);
                 
                 
             }break;
